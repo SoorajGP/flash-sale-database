@@ -89,7 +89,7 @@ This makes the app easy to navigate: add catalogue behaviour in `catalog`, stock
 
 For more detail, read [docs/architecture.md](docs/architecture.md).
 
-## Database design, explained
+## Database design
 
 PostgreSQL is the source of truth. Money is always an integer number of cents, never a floating-point value.
 
