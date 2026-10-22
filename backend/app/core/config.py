@@ -10,6 +10,10 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_minutes: int = 1440
     demo_payments_enabled: bool = True
+    redis_url: str = "redis://localhost:6379/0"
+    redis_enabled: bool = True
+    reservation_window_minutes: int = 10
+    rate_limit_checkout_per_minute: int = 30
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 

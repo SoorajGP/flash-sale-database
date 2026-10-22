@@ -103,6 +103,28 @@ function AdminPanel({
     }
   };
 
+  const [isCleaning, setIsCleaning] = useState(false);
+  const handleCleanupExpired = async () => {
+    setIsCleaning(true);
+    try {
+      const res = await fetch("/api/v1/admin/reservations/cleanup", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        onNotify(`Reclaimed ${data.released_count} expired reservation hold(s)!`, "success");
+        fetchDashboard();
+      } else {
+        onNotify("Failed to release expired reservations.", "error");
+      }
+    } catch {
+      onNotify("Network error while reclaiming holds.", "error");
+    } finally {
+      setIsCleaning(false);
+    }
+  };
+
   return (
     <section className="admin" id="admin">
       <div className="admin-header">
@@ -139,7 +161,15 @@ function AdminPanel({
         >
           {isRestocking ? "Restocking..." : "⚡ Restock All Products (+25)"}
         </button>
-        <span className="fine">Admin session active. Authenticated requests are signed via bearer token.</span>
+        <button
+          className="admin-btn secondary"
+          onClick={() => void handleCleanupExpired()}
+          disabled={isCleaning}
+          id="btn-clean-holds"
+        >
+          {isCleaning ? "Reclaiming..." : "♻ Purge Expired Holds"}
+        </button>
+        <span className="fine">Admin session active. Background worker purges expired reservations every 30s.</span>
       </div>
     </section>
   );
@@ -196,8 +226,20 @@ function App() {
       .catch(() => undefined);
   }, []);
 
-  // Ticking countdown timer
+  // Ticking countdown timer synced with server clock
   useEffect(() => {
+    fetch("/api/v1/system/time")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.server_time) {
+          const serverMs = new Date(data.server_time).getTime();
+          const targetMs = serverMs + 28800 * 1000;
+          const diff = Math.max(0, Math.floor((targetMs - Date.now()) / 1000));
+          setSecondsRemaining(diff);
+        }
+      })
+      .catch(() => undefined);
+
     const timer = setInterval(() => {
       setSecondsRemaining((prev) => (prev > 0 ? prev - 1 : 28800));
     }, 1000);
@@ -325,9 +367,24 @@ function App() {
         }
       }
 
+      // Client idempotency key to prevent double checkout on connection drops or double clicks
+      const idempotencyKey =
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `chk-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
       // Step 1: Checkout & reserve stock
-      const orderRes = await fetch(`/api/v1/orders/checkout/${activeCart}`, { method: "POST" });
+      const orderRes = await fetch(`/api/v1/orders/checkout/${activeCart}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": idempotencyKey,
+        },
+      });
       if (!orderRes.ok) {
+        if (orderRes.status === 429) {
+          throw new Error("High checkout volume! You are in line—please wait a few seconds and try again.");
+        }
         const errData = await orderRes.json().catch(() => ({}));
         throw new Error(errData.detail || "Checkout reservation could not be completed.");
       }
