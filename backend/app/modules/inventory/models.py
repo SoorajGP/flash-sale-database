@@ -52,7 +52,9 @@ class InventoryMovement(Base):
     product_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("products.id", ondelete="RESTRICT"), index=True
     )
-    movement_type: Mapped[InventoryMovementType] = mapped_column(Enum(InventoryMovementType, name="inventory_movement_type"))
+    movement_type: Mapped[InventoryMovementType] = mapped_column(
+        Enum(InventoryMovementType, values_callable=lambda x: [e.value for e in x], name="inventory_movement_type")
+    )
     quantity_delta: Mapped[int] = mapped_column(Integer)
     reference_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
     reference_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
@@ -78,6 +80,8 @@ class InventoryReservation(Base):
         UUID(as_uuid=True), ForeignKey("orders.id", ondelete="SET NULL"), nullable=True
     )
     quantity: Mapped[int] = mapped_column(Integer)
-    status: Mapped[ReservationStatus] = mapped_column(Enum(ReservationStatus, name="reservation_status"))
+    status: Mapped[ReservationStatus] = mapped_column(
+        Enum(ReservationStatus, values_callable=lambda x: [e.value for e in x], name="reservation_status")
+    )
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

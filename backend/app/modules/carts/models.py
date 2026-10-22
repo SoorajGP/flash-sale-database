@@ -29,7 +29,10 @@ class Cart(Base):
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )
     session_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
-    status: Mapped[CartStatus] = mapped_column(Enum(CartStatus, name="cart_status"), default=CartStatus.ACTIVE)
+    status: Mapped[CartStatus] = mapped_column(
+        Enum(CartStatus, values_callable=lambda x: [e.value for e in x], name="cart_status"),
+        default=CartStatus.ACTIVE,
+    )
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

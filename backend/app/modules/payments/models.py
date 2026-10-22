@@ -28,7 +28,10 @@ class Payment(Base):
     )
     provider: Mapped[str] = mapped_column(String(32), default="demo")
     provider_reference: Mapped[str] = mapped_column(String(255), unique=True)
-    status: Mapped[PaymentStatus] = mapped_column(Enum(PaymentStatus, name="payment_status"), default=PaymentStatus.PENDING)
+    status: Mapped[PaymentStatus] = mapped_column(
+        Enum(PaymentStatus, values_callable=lambda x: [e.value for e in x], name="payment_status"),
+        default=PaymentStatus.PENDING,
+    )
     amount_cents: Mapped[int] = mapped_column(Integer)
     currency: Mapped[str] = mapped_column(String(3))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

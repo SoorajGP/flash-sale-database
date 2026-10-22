@@ -8,6 +8,10 @@ __pycache__/
 # Node
 frontend/node_modules/
 frontend/dist/
+*.tsbuildinfo
+
+# Build metadata
+*.egg-info/
 
 # Local configuration
 .env
