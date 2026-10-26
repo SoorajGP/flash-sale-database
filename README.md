@@ -98,19 +98,6 @@ Tier 4 - Mega Drop     | 1000      | 50     | 50      | 0         | 7232.7    | 
 
 PostgreSQL 16 serves as the primary system of record. All financial amounts are stored as integer cents to eliminate floating-point rounding errors.
 
-```text
-users ─────< carts ─────< cart_items >───── products ───── inventory
-  │             │                                │             │
-  │             │                                ├────< product_feedback
-  └────< orders (Partitioned)                     ├────< inventory_movements (Partitioned)
-             │  │                                └────< flash_sale_waitlist (FIFO Queue)
-             │  └────< payments
-             └────< order_items
-
-flash_sales ─────< flash_sale_products >──── products
-
-orders / carts ─────< inventory_reservations (10-Min Hold) >──── products
-```
 
 <img width="1922" height="3540" alt="SurgeCart Entity Relationship Diagram" src="https://github.com/user-attachments/assets/6524289a-fee8-4e6d-8ff3-3d734de236d3" />
 
@@ -131,7 +118,7 @@ orders / carts ─────< inventory_reservations (10-Min Hold) >───�
 
 ---
 
-## Two-Tier Concurrency Defense: How 0.00% Oversell is Achieved
+## Concurrency Defense
 
 ### Tier 1: In-Memory Redis Lua Stock Shield
 Incoming checkouts are filtered in RAM using an atomic Lua script (`fast_reserve_stock`). Because Redis is single-threaded, decrementing stock and validating against zero happens atomically in microseconds:
@@ -285,7 +272,7 @@ Runs 12 comprehensive unit and integration tests covering flash sale limits, rac
 
 ---
 
-## Technical Summary for Hiring Teams
+## Technical Summary
 
 | Engineering Dimension | Implementation in SurgeCart |
 | :--- | :--- |
