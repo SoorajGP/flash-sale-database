@@ -97,6 +97,9 @@ flash_sales ─────< flash_sale_products >──── products
 orders / carts ─────< inventory_reservations >──── products
 ```
 
+<img width="1922" height="3540" alt="surgecart - er diagram" src="https://github.com/user-attachments/assets/6524289a-fee8-4e6d-8ff3-3d734de236d3" />
+
+
 ### Relational Tables & Constraints
 
 | Table | Purpose | Key Integrity Constraints |
