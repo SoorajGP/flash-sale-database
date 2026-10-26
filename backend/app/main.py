@@ -31,6 +31,21 @@ async def periodic_reservation_cleanup() -> None:
             logger.error("Error in periodic_reservation_cleanup: %s", e)
 
 
+async def periodic_waiting_room_drain() -> None:
+    """Discharges waiting tickets from the in-memory queue at the configured leaky-bucket flow rate."""
+    from app.modules.waiting_room.service import admit_next_batch, is_waiting_room_active
+    settings = get_settings()
+    while True:
+        try:
+            await asyncio.sleep(1.0)
+            if is_waiting_room_active():
+                admit_next_batch(count=settings.waiting_room_drain_rate)
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.debug("Error in periodic_waiting_room_drain: %s", e)
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     # Ensure tables exist and default data is seeded
@@ -50,10 +65,12 @@ async def lifespan(_: FastAPI):
         logger.debug("Could not warm initial inventory cache: %s", e)
 
     cleanup_task = asyncio.create_task(periodic_reservation_cleanup())
+    drain_task = asyncio.create_task(periodic_waiting_room_drain())
     yield
     cleanup_task.cancel()
+    drain_task.cancel()
     try:
-        await cleanup_task
+        await asyncio.gather(cleanup_task, drain_task, return_exceptions=True)
     except asyncio.CancelledError:
         pass
 

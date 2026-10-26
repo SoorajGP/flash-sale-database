@@ -26,7 +26,7 @@ from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
 from app.core.security import require_admin
-from app.db.session import get_db
+from app.db.session import get_db, get_read_db
 from app.modules.catalog.models import Product
 from app.modules.sales.models import FlashSale, FlashSaleProduct, FlashSaleStatus
 from app.modules.users.models import User
@@ -60,7 +60,7 @@ def _windows_overlap(s1_start: datetime, s1_end: datetime, s2_start: datetime, s
 # ─── Public routes ──────────────────────────────────────────────────────────
 
 @router.get("")
-def list_live_sales(db: Annotated[Session, Depends(get_db)]) -> list[dict]:
+def list_live_sales(db: Annotated[Session, Depends(get_read_db)]) -> list[dict]:
     """Return all sales currently in LIVE status whose window is active."""
     now = datetime.now(UTC)
     sales = db.scalars(
@@ -86,7 +86,7 @@ def list_live_sales(db: Annotated[Session, Depends(get_db)]) -> list[dict]:
 @admin_router.get("")
 def list_all_sales(
     _: Annotated[User, Depends(require_admin)],
-    db: Annotated[Session, Depends(get_db)],
+    db: Annotated[Session, Depends(get_read_db)],
 ) -> list[dict]:
     """Return all flash sales (any status) for the admin UI."""
     sales = db.scalars(select(FlashSale).order_by(FlashSale.starts_at.desc()))

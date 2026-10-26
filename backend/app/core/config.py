@@ -14,6 +14,14 @@ class Settings(BaseSettings):
     redis_enabled: bool = True
     reservation_window_minutes: int = 10
     rate_limit_checkout_per_minute: int = 30
+    read_replica_url: str | None = None
+    read_replica_pool_size: int = 30
+    read_replica_max_overflow: int = 50
+    waiting_room_enabled: bool = False
+    waiting_room_drain_rate: int = 50
+    waiting_room_burst_capacity: int = 100
+    waiting_room_ticket_ttl_minutes: int = 5
+    waitlist_claim_window_minutes: int = 10
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 

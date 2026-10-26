@@ -4,7 +4,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, Enum, ForeignKey, Integer, String, UniqueConstraint, func
+from sqlalchemy import CheckConstraint, DateTime, Enum, ForeignKey, Index, Integer, String, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -25,6 +25,8 @@ class Order(Base):
         CheckConstraint("subtotal_cents >= 0", name="ck_order_subtotal_nonnegative"),
         CheckConstraint("discount_cents >= 0", name="ck_order_discount_nonnegative"),
         CheckConstraint("total_cents >= 0", name="ck_order_total_nonnegative"),
+        Index("ix_orders_created_at_status", "created_at", "status"),
+        Index("ix_orders_created_at_user", "created_at", "user_id"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

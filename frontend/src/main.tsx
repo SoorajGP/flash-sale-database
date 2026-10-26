@@ -24,6 +24,9 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
+import { ScalingArchitectureTab } from "./ScalingArchitectureTab";
+import { WaitingRoomModal } from "./WaitingRoomModal";
+import { RestockWaitlistModal } from "./RestockWaitlistModal";
 
 // ─── Type definitions ────────────────────────────────────────────────────────
 
@@ -644,12 +647,14 @@ function FlashSaleSlider({
   onAddToBag,
   onOpenProduct,
   recentlyAddedId,
+  onOpenWaitlist,
 }: {
   products: Product[];
   serverOffsetMs: number;
   onAddToBag: (p: Product) => void;
   onOpenProduct?: (sku: string) => void;
   recentlyAddedId: string | null;
+  onOpenWaitlist?: (p: Product) => void;
 }) {
   const flashProducts = useMemo(() => products.filter((p) => p.flashSale), [products]);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -774,14 +779,24 @@ function FlashSaleSlider({
                         <span className="product-price flash">{formatPrice(product.salePrice ?? product.price)}</span>
                         <span className="product-price-original">{formatPrice(product.price)}</span>
                       </div>
-                      <button
-                        className={`product-add-btn flash-btn ${isAdded ? "added" : ""}`}
-                        onClick={() => !isOut && onAddToBag(product)}
-                        disabled={isOut}
-                        id={`btn-slider-add-${product.id}`}
-                      >
-                        {isOut ? "Sold Out" : isAdded ? "Added" : "Add to Bag"}
-                      </button>
+                      {isOut ? (
+                        <button
+                          className="product-add-btn waitlist-btn"
+                          onClick={() => onOpenWaitlist && onOpenWaitlist(product)}
+                          id={`btn-slider-waitlist-${product.id}`}
+                          title="Join waitlist for expired hold restock"
+                        >
+                          Join Waitlist
+                        </button>
+                      ) : (
+                        <button
+                          className={`product-add-btn flash-btn ${isAdded ? "added" : ""}`}
+                          onClick={() => onAddToBag(product)}
+                          id={`btn-slider-add-${product.id}`}
+                        >
+                          {isAdded ? "Added" : "Add to Bag"}
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1777,6 +1792,7 @@ function ProductDetailPage({
   onRequireAuth,
   onNotify,
   onProductsUpdated,
+  onOpenWaitlist,
 }: {
   skuOrId: string;
   serverOffsetMs: number;
@@ -1786,6 +1802,7 @@ function ProductDetailPage({
   onRequireAuth: () => void;
   onNotify: (msg: string, type?: "success" | "error") => void;
   onProductsUpdated?: () => void;
+  onOpenWaitlist?: (product: Product) => void;
 }) {
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
@@ -2100,15 +2117,27 @@ function ProductDetailPage({
           )}
 
           {/* Action button */}
-          <button
-            className="pdp-action-btn"
-            disabled={isSoldOut}
-            onClick={handleCommitToCart}
-            id="btn-commit-to-cart"
-          >
-            <span>{isSoldOut ? "Allocation Exhausted" : isAdded ? "Added to Cart" : "Commit to Cart"}</span>
-            <span>&rarr;</span>
-          </button>
+          {isSoldOut ? (
+            <button
+              className="pdp-action-btn waitlist-btn"
+              onClick={() => onOpenWaitlist && onOpenWaitlist(product)}
+              id="btn-commit-to-cart"
+              style={{ background: "#92400e", borderColor: "#78350f", color: "#fff" }}
+            >
+              <span>Join Priority Waitlist</span>
+              <span>&rarr;</span>
+            </button>
+          ) : (
+            <button
+              className={`pdp-action-btn ${isAdded ? "added" : ""}`}
+              onClick={handleCommitToCart}
+              disabled={isSoldOut || isAdded}
+              id="btn-commit-to-cart"
+            >
+              <span>{isAdded ? "Added to Cart" : "Commit to Cart"}</span>
+              <span>&rarr;</span>
+            </button>
+          )}
 
           {/* Fulfillment Assurances */}
           <div className="pdp-assurances-list">
@@ -2825,7 +2854,7 @@ function AdminCatalogTab({
 
 // ─── Admin Panel (Revamped Executive SaaS Dashboard) ─────────────────────────
 
-type AdminTab = "orders" | "catalog" | "overview" | "flash-sales" | "analytics" | "customers";
+type AdminTab = "orders" | "catalog" | "overview" | "flash-sales" | "analytics" | "customers" | "scaling";
 
 type AdminOrderItem = {
   id: string;
@@ -3160,6 +3189,17 @@ function AdminPanel({
               <div className="mate-nav-item-left">
                 <IconUsers />
                 <span>Customers</span>
+              </div>
+            </button>
+
+            <button
+              className={`mate-nav-item ${activeTab === "scaling" ? "active" : ""}`}
+              onClick={() => setActiveTab("scaling")}
+              id="nav-item-scaling"
+            >
+              <div className="mate-nav-item-left">
+                <IconShield />
+                <span>Architecture &amp; Scaling</span>
               </div>
             </button>
           </nav>
@@ -3634,6 +3674,11 @@ function AdminPanel({
                 </table>
               )}
             </div>
+          )}
+
+          {/* TAB 7: ARCHITECTURE & SCALING */}
+          {activeTab === "scaling" && (
+            <ScalingArchitectureTab token={token} onNotify={onNotify} />
           )}
         </div>
 
@@ -4162,6 +4207,26 @@ function App() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
 
+  // Virtual waiting room state
+  const [showWaitingRoomModal, setShowWaitingRoomModal] = useState(false);
+  const [waitingRoomTicketId, setWaitingRoomTicketId] = useState("");
+  const [waitingRoomCartId, setWaitingRoomCartId] = useState("");
+
+  // Automated restock waitlist state
+  const [waitlistModalProduct, setWaitlistModalProduct] = useState<Product | null>(null);
+  const [activeRestockAlerts, setActiveRestockAlerts] = useState<
+    Array<{
+      waitlist_id: string;
+      product_id: string;
+      product_name: string;
+      product_sku?: string;
+      price_cents?: number;
+      claim_token: string;
+      claim_expires_at: string | null;
+      remaining_seconds: number;
+    }>
+  >([]);
+
   const [serverOffsetMs, setServerOffsetMs] = useState(0);
   const [heroCountdownSecs, setHeroCountdownSecs] = useState(28800);
 
@@ -4321,6 +4386,61 @@ function App() {
       .catch(() => undefined);
   }, []);
 
+  // ── Load and refresh restock alerts (FIFO hold expiration notifications) ─
+  const fetchRestockAlerts = useCallback(() => {
+    const userEmail = session?.email || (typeof window !== "undefined" ? localStorage.getItem("surgecart_waitlist_email") : null);
+    if (!userEmail) return;
+    fetch(`/api/v1/waitlist/my-alerts?email=${encodeURIComponent(userEmail)}`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((alerts) => {
+        if (Array.isArray(alerts)) {
+          setActiveRestockAlerts(alerts);
+        }
+      })
+      .catch(() => {});
+  }, [session]);
+
+  useEffect(() => {
+    fetchRestockAlerts();
+    const interval = setInterval(fetchRestockAlerts, 5000);
+    return () => clearInterval(interval);
+  }, [fetchRestockAlerts]);
+
+  const handleClaimRestock = async (alertItem: {
+    waitlist_id: string;
+    product_id: string;
+    product_name: string;
+    claim_token: string;
+  }) => {
+    try {
+      const res = await fetch("/api/v1/waitlist/claim", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ claim_token: alertItem.claim_token }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.detail || "Claim window expired or invalid.");
+      }
+      showToast(`Reserved stock claimed for ${alertItem.product_name}! Added to bag.`, "success");
+      const matched = products.find((p) => p.id === alertItem.product_id);
+      if (matched) {
+        addToBag(matched, 1);
+        setIsCartOpen(true);
+      }
+      fetchRestockAlerts();
+      fetchProducts();
+    } catch (err: unknown) {
+      showToast((err as Error).message || "Could not claim restock hold.", "error");
+    }
+  };
+
+  const handleWaitingRoomAdmitted = (token: string) => {
+    setShowWaitingRoomModal(false);
+    showToast("Admitted from queue! Completing checkout reservation...", "info");
+    void handleCheckout(token);
+  };
+
   // ── Load products (enriched with flash sale context & remaining stock) ──
   const fetchProducts = useCallback(() => {
     fetch("/api/v1/products")
@@ -4429,7 +4549,7 @@ function App() {
   };
 
   // ── Checkout with Guaranteed Server Cart Synchronization ───────────────
-  const handleCheckout = async () => {
+  const handleCheckout = async (admissionToken?: string) => {
     if (!cart.length) { showToast("Your bag is empty.", "info"); return; }
     setIsCheckingOut(true);
     try {
@@ -4460,14 +4580,46 @@ function App() {
         }
       }
 
-      // 3. Complete checkout reservation
+      // 3. Complete checkout reservation (pass admissionToken if available)
       const idempotencyKey = crypto.randomUUID?.() ?? `chk-${Date.now()}`;
+      const checkoutHeaders: Record<string, string> = {
+        "Content-Type": "application/json",
+        "Idempotency-Key": idempotencyKey,
+      };
+      if (admissionToken) {
+        checkoutHeaders["X-Queue-Admission-Token"] = admissionToken;
+      }
+
       const orderRes = await fetch(`/api/v1/orders/checkout/${activeCartId}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+        headers: checkoutHeaders,
       });
+
       if (!orderRes.ok) {
-        if (orderRes.status === 429) throw new Error("High checkout volume. Please retry in a few moments.");
+        if (orderRes.status === 429) {
+          const isWaitingRoom = orderRes.headers.get("X-Waiting-Room-Required") === "true";
+          const ed = await orderRes.json().catch(() => ({})) as { detail?: string };
+          if (isWaitingRoom || (ed.detail && ed.detail.toLowerCase().includes("waiting room"))) {
+            // Shopper placed in virtual waiting room queue
+            const joinRes = await fetch("/api/v1/waiting-room/join", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ cart_id: activeCartId }),
+            });
+            if (joinRes.ok) {
+              const queueData = await joinRes.json();
+              if (queueData.status === "ADMITTED" && queueData.admission_token) {
+                // Instantly admitted, retry checkout directly
+                return handleCheckout(queueData.admission_token);
+              }
+              setWaitingRoomCartId(activeCartId);
+              setWaitingRoomTicketId(queueData.ticket_id);
+              setShowWaitingRoomModal(true);
+              return;
+            }
+          }
+          throw new Error(ed.detail ?? "High checkout volume. Please retry in a few moments.");
+        }
         const ed = await orderRes.json().catch(() => ({})) as { detail?: string };
         throw new Error(ed.detail ?? "Stock hold could not be allocated.");
       }
@@ -4490,6 +4642,7 @@ function App() {
       });
       setCart([]);
       setIsCartOpen(false);
+      setShowWaitingRoomModal(false);
       showToast(`Order ${paid.order_number} confirmed.`, "success");
       fetchProducts(); // Refresh stock metrics
     } catch (err: unknown) {
@@ -4950,6 +5103,22 @@ function App() {
         </div>
       </header>
 
+      {/* ── Active Restock Alerts Banner (10-minute hold expiry notification) ── */}
+      {activeRestockAlerts.length > 0 && (
+        <div className="restock-alerts-bar" id="restock-alerts-banner">
+          <span>
+            <strong>Restock Alert:</strong> A 10-minute hold for <strong>{activeRestockAlerts[0].product_name}</strong> expired unpurchased! Claim your reserved unit now ({activeRestockAlerts[0].remaining_seconds}s window).
+          </span>
+          <button
+            className="restock-alert-claim-btn"
+            onClick={() => handleClaimRestock(activeRestockAlerts[0])}
+            id="btn-claim-restock"
+          >
+            Claim Reserved Hold
+          </button>
+        </div>
+      )}
+
       {/* ── Main View Router ────────────────────────────────────────── */}
       <main id="top">
         {viewMode === "pdp" && pdpSkuOrId ? (
@@ -4966,6 +5135,7 @@ function App() {
             }}
             onNotify={showToast}
             onProductsUpdated={fetchProducts}
+            onOpenWaitlist={(prod) => setWaitlistModalProduct(prod)}
           />
         ) : (
           /* ── STOREFRONT VIEW ── */
@@ -5033,6 +5203,7 @@ function App() {
               onAddToBag={addToBag}
               onOpenProduct={navigateToCatalog}
               recentlyAddedId={recentlyAddedId}
+              onOpenWaitlist={(prod) => setWaitlistModalProduct(prod)}
             />
 
             {/* Products Catalog */}
@@ -5189,15 +5360,25 @@ function App() {
                                 <span className="product-price">{formatPrice(product.price)}</span>
                               )}
                             </div>
-                            <button
-                              className={`product-add-btn ${isAdded ? "added" : ""} ${isFlash ? "flash-btn" : ""}`}
-                              onClick={() => !isOut && void addToBag(product)}
-                              disabled={isOut}
-                              id={`btn-add-${product.id}`}
-                              aria-label={`Add ${product.name} to bag`}
-                            >
-                              {isOut ? "Sold Out" : isAdded ? "Added" : "Add to Bag"}
-                            </button>
+                            {isOut ? (
+                              <button
+                                className="product-add-btn waitlist-btn"
+                                onClick={() => setWaitlistModalProduct(product)}
+                                id={`btn-waitlist-${product.id}`}
+                                aria-label={`Join priority waitlist for ${product.name}`}
+                              >
+                                Join Waitlist
+                              </button>
+                            ) : (
+                              <button
+                                className={`product-add-btn ${isAdded ? "added" : ""} ${isFlash ? "flash-btn" : ""}`}
+                                onClick={() => void addToBag(product)}
+                                id={`btn-add-${product.id}`}
+                                aria-label={`Add ${product.name} to bag`}
+                              >
+                                {isAdded ? "Added" : "Add to Bag"}
+                              </button>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -5671,6 +5852,30 @@ function App() {
           </div>
         </div>
       )}
+
+      {/* ── Virtual Waiting Room Modal (Token Bucket Admission Gate) ─── */}
+      <WaitingRoomModal
+        isOpen={showWaitingRoomModal}
+        ticketId={waitingRoomTicketId}
+        cartId={waitingRoomCartId}
+        onAdmitted={handleWaitingRoomAdmitted}
+        onClose={() => setShowWaitingRoomModal(false)}
+      />
+
+      {/* ── Automated Restock Waitlist Modal (10-minute hold expiration) ── */}
+      <RestockWaitlistModal
+        isOpen={!!waitlistModalProduct}
+        product={waitlistModalProduct}
+        userEmail={session?.email || ""}
+        onClose={() => setWaitlistModalProduct(null)}
+        onJoined={(pos, name) => {
+          showToast(`Joined priority restock waitlist for ${name} at position #${pos}!`, "success");
+          if (session?.email) {
+            localStorage.setItem("surgecart_waitlist_email", session.email);
+          }
+          fetchRestockAlerts();
+        }}
+      />
 
       {/* ── Toast Notifications ──────────────────────────────────────── */}
       <div className="toast-container" aria-live="polite">

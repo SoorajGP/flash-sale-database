@@ -38,7 +38,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.security import require_admin
-from app.db.session import get_db
+from app.db.session import get_read_db
 from app.modules.inventory.models import InventoryReservation, ReservationStatus
 from app.modules.orders.models import Order, OrderItem, OrderStatus
 from app.modules.sales.models import FlashSale, FlashSaleProduct, FlashSaleStatus
@@ -50,7 +50,7 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 @router.get("/analytics")
 def get_analytics(
     _: Annotated[User, Depends(require_admin)],
-    db: Annotated[Session, Depends(get_db)],
+    db: Annotated[Session, Depends(get_read_db)],
 ) -> dict[str, Any]:
     """
     Aggregated analytics for the admin dashboard.

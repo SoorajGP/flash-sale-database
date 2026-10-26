@@ -301,6 +301,7 @@ async def main():
         ("Tier 1 - Standard Drop", 100, 10),
         ("Tier 2 - Heavy Drop", 250, 25),
         ("Tier 3 - Surge Rush", 500, 50),
+        ("Tier 4 - Mega Drop", 1000, 50)
     ]
 
     all_metrics = []

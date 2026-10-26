@@ -7,8 +7,9 @@ from app.modules.orders.models import Order, OrderItem
 from app.modules.payments.models import Payment
 from app.modules.sales.models import FlashSale, FlashSaleProduct
 from app.modules.users.models import User
+from app.modules.waitlist.models import FlashSaleWaitlist
 
 __all__ = [
-    "Cart", "CartItem", "FlashSale", "FlashSaleProduct", "Inventory",
+    "Cart", "CartItem", "FlashSale", "FlashSaleProduct", "FlashSaleWaitlist", "Inventory",
     "InventoryMovement", "InventoryReservation", "Order", "OrderItem", "Payment", "Product", "ProductFeedback", "User",
 ]

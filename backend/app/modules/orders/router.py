@@ -57,9 +57,11 @@ def checkout(
     cart_id: UUID,
     db: Annotated[Session, Depends(get_db)],
     idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
+    queue_token: Annotated[str | None, Header(alias="X-Queue-Admission-Token")] = None,
 ) -> dict:
     """
     High-concurrency flash sale checkout:
+    0. Virtual waiting room admission gate (token bucket / leaky bucket).
     1. Rate limit protection per cart / client.
     2. Lazy cleanup of expired holds so reclaimed stock is immediately available.
     3. Fast-failure stock check.
@@ -67,6 +69,16 @@ def checkout(
     5. Flash sale allocation and per-customer limit validation.
     6. Atomic stock reservation and order snapshot creation.
     """
+    # 0. Virtual Waiting Room verification
+    from app.modules.waiting_room.service import is_waiting_room_active, verify_and_consume_token
+    if is_waiting_room_active():
+        if not queue_token or not verify_and_consume_token(queue_token, str(cart_id)):
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Virtual waiting room active. An admitted queue ticket is required before checkout.",
+                headers={"X-Waiting-Room-Required": "true"},
+            )
+
     # 1. Rate limiting
     client_id = str(cart_id)
     if not check_rate_limit(client_id, action="checkout", limit=get_settings().rate_limit_checkout_per_minute):

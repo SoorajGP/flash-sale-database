@@ -4,7 +4,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, Enum, ForeignKey, Integer, String, func
+from sqlalchemy import CheckConstraint, DateTime, Enum, ForeignKey, Index, Integer, String, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -46,7 +46,11 @@ class Inventory(Base):
 
 class InventoryMovement(Base):
     __tablename__ = "inventory_movements"
-    __table_args__ = (CheckConstraint("quantity_delta <> 0", name="ck_inventory_movement_nonzero"),)
+    __table_args__ = (
+        CheckConstraint("quantity_delta <> 0", name="ck_inventory_movement_nonzero"),
+        Index("ix_inv_movements_created_product", "created_at", "product_id"),
+        Index("ix_inv_movements_created_type", "created_at", "movement_type"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     product_id: Mapped[uuid.UUID] = mapped_column(

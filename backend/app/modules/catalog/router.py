@@ -20,7 +20,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.security import get_current_user
-from app.db.session import get_db
+from app.db.session import get_db, get_read_db
 from app.modules.catalog.models import Product, ProductFeedback
 from app.modules.inventory.models import Inventory, InventoryReservation, ReservationStatus
 from app.modules.sales.models import FlashSale, FlashSaleProduct, FlashSaleStatus
@@ -100,7 +100,7 @@ def _get_live_flash_context(db: Session, product_ids: list[UUID], now: datetime)
 
 
 @router.get("")
-def list_active_products(db: Session = Depends(get_db)) -> list[dict[str, Any]]:
+def list_active_products(db: Session = Depends(get_read_db)) -> list[dict[str, Any]]:
     """Return active products enriched with inventory and live flash sale parameters."""
     now = datetime.now(UTC)
     products = list(
@@ -168,7 +168,7 @@ def list_active_products(db: Session = Depends(get_db)) -> list[dict[str, Any]]:
 
 
 @router.get("/{sku_or_id}")
-def get_product_detail(sku_or_id: str, db: Session = Depends(get_db)) -> dict[str, Any]:
+def get_product_detail(sku_or_id: str, db: Session = Depends(get_read_db)) -> dict[str, Any]:
     """Retrieve full product information by UUID or unique SKU."""
     now = datetime.now(UTC)
 
@@ -284,7 +284,7 @@ def list_product_feedback(
     offset: int = Query(default=0, ge=0),
     rating: int | None = Query(default=None, ge=1, le=5),
     rating_score: int | None = Query(default=None, ge=1, le=5),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_read_db),
 ) -> dict[str, Any]:
     """Publicly accessible feedback array supporting cursor-based or offset pagination and rating filters."""
     product = db.get(Product, product_id)
@@ -344,7 +344,7 @@ def list_product_feedback(
 @router.get("/{product_id}/feedback/summary")
 def get_product_feedback_summary(
     product_id: UUID,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_read_db),
 ) -> dict[str, Any]:
     """Performance-optimized aggregate quantitative analytics for product reviews."""
     product = db.get(Product, product_id)
