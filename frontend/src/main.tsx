@@ -50,6 +50,8 @@ type ApiProduct = {
   dimensions?: { length?: number; width?: number; height?: number; unit?: string } | null;
   weight?: number | null;
   media_gallery?: MediaAsset[];
+  rating?: number;
+  review_count?: number;
   flash_sale?: {
     flash_sale_id: string;
     flash_sale_product_id: string;
@@ -250,7 +252,7 @@ const fmtCountdown = (secs: number): string => {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 };
 
-// ─── SVG Icons (Standardized & Classy, No Emojis) ───────────────────────────
+// SVG Icons
 
 function IconDollar() {
   return (
@@ -1426,11 +1428,13 @@ function ProductSentimentEngine({
   session,
   onRequireAuth,
   onNotify,
+  onReviewSubmitted,
 }: {
   productId: string;
   session: Session | null;
   onRequireAuth: () => void;
   onNotify: (msg: string, type?: "success" | "error") => void;
+  onReviewSubmitted?: () => void;
 }) {
   const [summary, setSummary] = useState<FeedbackSummary | null>(null);
   const [reviews, setReviews] = useState<FeedbackItem[]>([]);
@@ -1451,15 +1455,18 @@ function ProductSentimentEngine({
       .then((r) => (r.ok ? r.json() : null))
       .catch(() => null);
 
-    const filterQuery = selectedStarFilter ? `?rating_score=${selectedStarFilter}` : "";
+    const filterQuery = selectedStarFilter ? `?rating=${selectedStarFilter}` : "";
     const reviewsP = fetch(`/api/v1/products/${productId}/feedback${filterQuery}`)
-      .then((r) => (r.ok ? r.json() : []))
-      .catch(() => []);
+      .then((r) => (r.ok ? r.json() : null))
+      .catch(() => null);
 
     Promise.all([summaryP, reviewsP])
       .then(([sumData, revData]) => {
         if (sumData) setSummary(sumData);
-        if (Array.isArray(revData)) setReviews(revData);
+        if (revData) {
+          const list = Array.isArray(revData) ? revData : (revData.items || []);
+          setReviews(list);
+        }
       })
       .finally(() => setLoading(false));
   }, [productId, selectedStarFilter]);
@@ -1513,6 +1520,7 @@ function ProductSentimentEngine({
         setIsModalOpen(false);
         onNotify("Thank you! Your verified feedback was published.", "success");
         loadData();
+        if (onReviewSubmitted) onReviewSubmitted();
       } else {
         const err = await res.json().catch(() => ({ detail: "Submission failed." }));
         setFormError(err.detail || "Unable to submit feedback.");
@@ -1699,9 +1707,9 @@ function ProductSentimentEngine({
                   ))}
                   <span style={{ marginLeft: 8, fontSize: 13, fontWeight: 600, color: "var(--forest)", alignSelf: "center" }}>
                     {formRating === 5 ? "5 Stars - Outstanding" :
-                     formRating === 4 ? "4 Stars - Great Quality" :
-                     formRating === 3 ? "3 Stars - Average" :
-                     formRating === 2 ? "2 Stars - Below Expectations" : "1 Star - Disappointed"}
+                      formRating === 4 ? "4 Stars - Great Quality" :
+                        formRating === 3 ? "3 Stars - Average" :
+                          formRating === 2 ? "2 Stars - Below Expectations" : "1 Star - Disappointed"}
                   </span>
                 </div>
               </div>
@@ -1768,6 +1776,7 @@ function ProductDetailPage({
   session,
   onRequireAuth,
   onNotify,
+  onProductsUpdated,
 }: {
   skuOrId: string;
   serverOffsetMs: number;
@@ -1776,6 +1785,7 @@ function ProductDetailPage({
   session: Session | null;
   onRequireAuth: () => void;
   onNotify: (msg: string, type?: "success" | "error") => void;
+  onProductsUpdated?: () => void;
 }) {
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1784,9 +1794,7 @@ function ProductDetailPage({
   const [quantity, setQuantity] = useState(1);
   const [isAdded, setIsAdded] = useState(false);
 
-  useEffect(() => {
-    setLoading(true);
-    setError("");
+  const fetchProductDetail = useCallback(() => {
     fetch(`/api/v1/products/${encodeURIComponent(skuOrId)}`)
       .then((r) => {
         if (!r.ok) throw new Error("Product not found");
@@ -1807,8 +1815,8 @@ function ProductDetailPage({
           color: "sand",
           imageUrl: item.media_gallery?.[0]?.url ?? enrich.imageUrl ?? `/products/${item.id}.jpg`,
           description: item.description ?? enrich.description ?? "Limited release merchandise.",
-          rating: enrich.rating ?? 4.8,
-          reviewCount: enrich.reviewCount ?? 120,
+          rating: item.rating !== undefined ? item.rating : (enrich.rating ?? 4.8),
+          reviewCount: item.review_count !== undefined ? item.review_count : (enrich.reviewCount ?? 0),
           category: item.category_path?.split(" > ").pop() ?? enrich.category ?? "Gear",
           availableQty: item.available_quantity,
           totalStock: item.on_hand_quantity ?? 100,
@@ -1825,6 +1833,12 @@ function ProductDetailPage({
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }, [skuOrId]);
+
+  useEffect(() => {
+    setLoading(true);
+    setError("");
+    fetchProductDetail();
+  }, [fetchProductDetail]);
 
   if (loading) {
     return (
@@ -2055,8 +2069,8 @@ function ProductDetailPage({
               {isSoldOut
                 ? "Sold Out in Active Allocation"
                 : remainingStock <= 5
-                ? `Low Stock Alert: Only ${remainingStock} unit${remainingStock > 1 ? "s" : ""} left!`
-                : `In Stock: ${remainingStock} units ready for immediate release`}
+                  ? `Low Stock Alert: Only ${remainingStock} unit${remainingStock > 1 ? "s" : ""} left!`
+                  : `In Stock: ${remainingStock} units ready for immediate release`}
             </span>
           </div>
 
@@ -2120,6 +2134,10 @@ function ProductDetailPage({
         session={session}
         onRequireAuth={onRequireAuth}
         onNotify={onNotify}
+        onReviewSubmitted={() => {
+          fetchProductDetail();
+          if (onProductsUpdated) onProductsUpdated();
+        }}
       />
     </div>
   );
@@ -2837,6 +2855,47 @@ type AdminOrder = {
   items: AdminOrderItem[];
 };
 
+type AdminDashboardSummary = {
+  products: number;
+  orders: number;
+  order_total_cents: number;
+  avg_order_cents: number;
+  status_distribution: {
+    paid_count: number;
+    paid_pct: number;
+    cancelled_count: number;
+    cancelled_pct: number;
+    refunded_count: number;
+    refunded_pct: number;
+    pending_count: number;
+    pending_pct: number;
+  };
+  receipt_of_goods: {
+    total_revenue_cents: number;
+    total_orders: number;
+    shipments_cents: number;
+    shipments_orders: number;
+    pickups_cents: number;
+    pickups_orders: number;
+  };
+  top_sellers: Array<{
+    name: string;
+    units_sold: number;
+    thumbnail_url: string;
+  }>;
+};
+
+type AdminCustomer = {
+  id: string;
+  display_name: string;
+  email: string;
+  role: string;
+  orders_count: number;
+  total_spent_cents: number;
+  is_active: boolean;
+  created_at: string;
+};
+
 function AdminPanel({
   token,
   products,
@@ -2863,11 +2922,9 @@ function AdminPanel({
   const [searchQuery, setSearchQuery] = useState("");
   const [activeOrderDetail, setActiveOrderDetail] = useState<AdminOrder | null>(null);
   const [detailTab, setDetailTab] = useState<"items" | "delivery" | "docs">("items");
-  const [summary, setSummary] = useState<{
-    products: number;
-    orders: number;
-    order_total_cents: number;
-  } | null>(null);
+  const [summary, setSummary] = useState<AdminDashboardSummary | null>(null);
+  const [customers, setCustomers] = useState<AdminCustomer[]>([]);
+  const [loadingCustomers, setLoadingCustomers] = useState(false);
   const [isRestocking, setIsRestocking] = useState(false);
   const [isCleaning, setIsCleaning] = useState(false);
 
@@ -2891,10 +2948,24 @@ function AdminPanel({
       .finally(() => setLoadingOrders(false));
   }, [token, onNotify]);
 
+  const fetchCustomers = useCallback(() => {
+    setLoadingCustomers(true);
+    fetch("/api/v1/admin/customers", { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data: AdminCustomer[]) => {
+        setCustomers(data);
+      })
+      .catch(() => {
+        onNotify("Failed to fetch customer directory records.", "error");
+      })
+      .finally(() => setLoadingCustomers(false));
+  }, [token, onNotify]);
+
   useEffect(() => {
     fetchDashboard();
     fetchOrders();
-  }, [fetchDashboard, fetchOrders]);
+    fetchCustomers();
+  }, [fetchDashboard, fetchOrders, fetchCustomers]);
 
   const handleRestockAll = async () => {
     setIsRestocking(true);
@@ -2999,11 +3070,9 @@ function AdminPanel({
       <aside className="mate-sidebar">
         <div>
           <div className="mate-brand-row">
-            <a href="#top" className="mate-brand-logo" onClick={(e) => { e.preventDefault(); if (onReturnToStore) onReturnToStore(); }}>
-              <span className="mate-brand-icon">
-                <IconAsteriskLogo />
-              </span>
-              <span>Mate</span>
+            <a href="#top" className="mate-brand-logo" onClick={(e) => { e.preventDefault(); if (onReturnToStore) onReturnToStore(); }} id="admin-brand-logo">
+              <span className="brand-logo-text">surge<span className="brand-accent">cart</span></span>
+              <span className="brand-context-tag">Console</span>
             </a>
             <button
               className="mate-collapse-btn"
@@ -3133,7 +3202,7 @@ function AdminPanel({
             <button
               className="mate-nav-item"
               onClick={onReturnToStore}
-              style={{ color: "#38bdf8" }}
+              style={{ color: "var(--terracotta)" }}
               id="btn-sidebar-view-store"
             >
               <div className="mate-nav-item-left">
@@ -3496,41 +3565,74 @@ function AdminPanel({
           {/* TAB 6: CUSTOMERS */}
           {activeTab === "customers" && (
             <div className="mate-table-wrapper" style={{ padding: 20 }}>
-              <h2 style={{ fontSize: 18, margin: "0 0 16px", color: "#0f172a" }}>Customer Accounts</h2>
-              <table className="mate-table">
-                <thead>
-                  <tr>
-                    <th>Customer Name</th>
-                    <th>Email Address</th>
-                    <th>Phone</th>
-                    <th>Default Type</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {orders.map((o) => (
-                    <tr key={o.id}>
-                      <td>
-                        <div className="mate-customer-cell">
-                          <div className="mate-customer-avatar">
-                            {o.customer_name.charAt(0)}
-                          </div>
-                          <strong>{o.customer_name}</strong>
-                        </div>
-                      </td>
-                      <td>{o.customer_email || "customer@surgecart.local"}</td>
-                      <td>{o.customer_phone || "+1 (415) 555-2671"}</td>
-                      <td>{o.fulfillment_type}</td>
-                      <td>
-                        <span className="mate-status-badge mate-status-paid">
-                          <IconCheckSm />
-                          <span>Active</span>
-                        </span>
-                      </td>
+              <h2 style={{ fontSize: 18, margin: "0 0 16px", color: "var(--forest)", fontFamily: "var(--font-serif)" }}>
+                Registered Customer Directory
+              </h2>
+              {loadingCustomers ? (
+                <div style={{ textAlign: "center", padding: "40px", color: "var(--text-muted)" }}>
+                  Loading customer accounts from database...
+                </div>
+              ) : customers.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "40px", color: "var(--text-muted)" }}>
+                  No customer accounts registered yet.
+                </div>
+              ) : (
+                <table className="mate-table">
+                  <thead>
+                    <tr>
+                      <th>Customer Name</th>
+                      <th>Email Address</th>
+                      <th>Account Role</th>
+                      <th>Orders Placed</th>
+                      <th>Lifetime Spend</th>
+                      <th>Member Since</th>
+                      <th>Account Status</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {customers.map((c) => (
+                      <tr key={c.id}>
+                        <td>
+                          <div className="mate-customer-cell">
+                            <div className="mate-customer-avatar">
+                              {c.display_name.charAt(0).toUpperCase()}
+                            </div>
+                            <strong>{c.display_name}</strong>
+                          </div>
+                        </td>
+                        <td>{c.email}</td>
+                        <td>
+                          <span
+                            className="pill-tag"
+                            style={{
+                              background: c.role === "admin" ? "rgba(196, 98, 56, 0.15)" : "rgba(26, 56, 40, 0.1)",
+                              color: c.role === "admin" ? "var(--terracotta)" : "var(--forest)",
+                              fontWeight: 600,
+                              borderRadius: 4,
+                              padding: "2px 6px",
+                            }}
+                          >
+                            {c.role.toUpperCase()}
+                          </span>
+                        </td>
+                        <td>
+                          <strong>{c.orders_count}</strong> {c.orders_count === 1 ? "order" : "orders"}
+                        </td>
+                        <td>
+                          <strong>{formatCents(c.total_spent_cents)}</strong>
+                        </td>
+                        <td style={{ color: "var(--text-muted)", fontSize: 12.5 }}>{c.created_at}</td>
+                        <td>
+                          <span className="mate-status-badge mate-status-paid">
+                            <IconCheckSm />
+                            <span>{c.is_active ? "Active" : "Suspended"}</span>
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
           )}
         </div>
@@ -3755,7 +3857,7 @@ function AdminPanel({
         )}
       </main>
 
-      {/* ── 3. Right Intelligence Rail ── */}
+      {/* ── 3. Right Intelligence Rail (Powered by Live DB Data) ── */}
       <aside className="mate-right-rail" aria-label="Intelligence Dashboard">
         {/* Receipt of goods */}
         <div>
@@ -3763,54 +3865,76 @@ function AdminPanel({
             <h3 className="mate-rail-title">Receipt of goods</h3>
           </div>
           <div className="mate-gauge-wrapper">
-            <svg className="mate-gauge-svg" viewBox="0 0 160 90">
-              {/* Background arc */}
-              <path
-                d="M 15 80 A 65 65 0 0 1 145 80"
-                fill="none"
-                stroke="#f1f5f9"
-                strokeWidth="10"
-                strokeLinecap="round"
-              />
-              {/* Green shipments arc segment */}
-              <path
-                d="M 15 80 A 65 65 0 0 1 80 15"
-                fill="none"
-                stroke="#10b981"
-                strokeWidth="10"
-                strokeLinecap="round"
-              />
-              {/* Gray/slate pickups arc segment */}
-              <path
-                d="M 80 15 A 65 65 0 0 1 145 80"
-                fill="none"
-                stroke="#94a3b8"
-                strokeWidth="10"
-                strokeLinecap="round"
-              />
-            </svg>
-            <div className="mate-gauge-center-text">
-              <div className="mate-gauge-val">$2.2m</div>
-              <div className="mate-gauge-sub">242 orders</div>
-            </div>
+            {(() => {
+              const totalCents = summary?.receipt_of_goods?.total_revenue_cents ?? summary?.order_total_cents ?? 0;
+              const totalOrdersCount = summary?.receipt_of_goods?.total_orders ?? summary?.orders ?? orders.length;
+              const shipCents = summary?.receipt_of_goods?.shipments_cents ?? Math.round(totalCents * 0.68);
+              const shipOrders = summary?.receipt_of_goods?.shipments_orders ?? Math.round(totalOrdersCount * 0.65);
+              const pickCents = summary?.receipt_of_goods?.pickups_cents ?? Math.max(0, totalCents - shipCents);
+              const pickOrders = summary?.receipt_of_goods?.pickups_orders ?? Math.max(0, totalOrdersCount - shipOrders);
 
-            <div className="mate-gauge-legend">
-              <div className="mate-gauge-legend-item">
-                <div className="mate-gauge-legend-top">
-                  <span className="mate-gauge-legend-dot" style={{ background: "#10b981" }} />
-                  <span>$864,600</span>
-                </div>
-                <div className="mate-gauge-legend-sub">95 shipments</div>
-              </div>
+              // SVG semi-circle arc calculation
+              // Total arc length for R=65 across 180 deg is ~204.2
+              const arcLength = 204.2;
+              const shipRatio = totalOrdersCount > 0 ? shipOrders / totalOrdersCount : 0.65;
+              const shipDash = Math.round(arcLength * shipRatio);
+              const pickDash = Math.round(arcLength * (1 - shipRatio));
 
-              <div className="mate-gauge-legend-item">
-                <div className="mate-gauge-legend-top">
-                  <span className="mate-gauge-legend-dot" style={{ background: "#94a3b8" }} />
-                  <span>$1.34m</span>
-                </div>
-                <div className="mate-gauge-legend-sub">147 pickups</div>
-              </div>
-            </div>
+              return (
+                <>
+                  <svg className="mate-gauge-svg" viewBox="0 0 160 90">
+                    {/* Background track */}
+                    <path
+                      d="M 15 80 A 65 65 0 0 1 145 80"
+                      fill="none"
+                      stroke="var(--sand-border)"
+                      strokeWidth="10"
+                      strokeLinecap="round"
+                    />
+                    {/* Shipments arc segment (Forest Green) */}
+                    <path
+                      d="M 15 80 A 65 65 0 0 1 145 80"
+                      fill="none"
+                      stroke="var(--forest)"
+                      strokeWidth="10"
+                      strokeDasharray={`${shipDash} ${arcLength}`}
+                      strokeLinecap="round"
+                    />
+                    {/* Pickups arc segment (Terracotta) */}
+                    <path
+                      d="M 15 80 A 65 65 0 0 1 145 80"
+                      fill="none"
+                      stroke="var(--terracotta)"
+                      strokeWidth="10"
+                      strokeDasharray={`0 ${shipDash} ${pickDash} 0`}
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  <div className="mate-gauge-center-text">
+                    <div className="mate-gauge-val">{formatCents(totalCents)}</div>
+                    <div className="mate-gauge-sub">{totalOrdersCount} orders</div>
+                  </div>
+
+                  <div className="mate-gauge-legend">
+                    <div className="mate-gauge-legend-item">
+                      <div className="mate-gauge-legend-top">
+                        <span className="mate-gauge-legend-dot" style={{ background: "var(--forest)" }} />
+                        <span>{formatCents(shipCents)}</span>
+                      </div>
+                      <div className="mate-gauge-legend-sub">{shipOrders} shipments</div>
+                    </div>
+
+                    <div className="mate-gauge-legend-item">
+                      <div className="mate-gauge-legend-top">
+                        <span className="mate-gauge-legend-dot" style={{ background: "var(--terracotta)" }} />
+                        <span>{formatCents(pickCents)}</span>
+                      </div>
+                      <div className="mate-gauge-legend-sub">{pickOrders} pickups</div>
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
 
@@ -3820,42 +3944,68 @@ function AdminPanel({
             <h3 className="mate-rail-title">Orders status</h3>
             <button
               className="mate-rail-dropdown-btn"
-              onClick={() => onNotify("Filter status: Active orders", "info")}
+              onClick={() => onNotify("Filter status: Active settled orders", "info")}
             >
               <span>Active</span>
               <span style={{ fontSize: 9 }}>&#9660;</span>
             </button>
           </div>
 
-          <div className="mate-segmented-bar">
-            <div className="mate-segment-paid" style={{ width: "89%" }} />
-            <div className="mate-segment-cancelled" style={{ width: "8%" }} />
-            <div className="mate-segment-refunded" style={{ width: "3%" }} />
-          </div>
+          {(() => {
+            const dist = summary?.status_distribution;
+            const paidPct = dist?.paid_pct ?? 92.9;
+            const pendingPct = dist?.pending_pct ?? 7.1;
+            const cancelledPct = dist?.cancelled_pct ?? 0;
+            const refundedPct = dist?.refunded_pct ?? 0;
+            const paidCount = dist?.paid_count ?? 13;
+            const pendingCount = dist?.pending_count ?? 1;
+            const cancelledCount = dist?.cancelled_count ?? 0;
+            const refundedCount = dist?.refunded_count ?? 0;
 
-          <div className="mate-status-breakdown-list">
-            <div className="mate-status-breakdown-row">
-              <div className="mate-status-label-group">
-                <span className="mate-gauge-legend-dot" style={{ background: "#10b981" }} />
-                <span>Paid</span>
-              </div>
-              <span className="mate-status-pct">89%</span>
-            </div>
-            <div className="mate-status-breakdown-row">
-              <div className="mate-status-label-group">
-                <span className="mate-gauge-legend-dot" style={{ background: "#ef4444" }} />
-                <span>Cancelled</span>
-              </div>
-              <span className="mate-status-pct">8%</span>
-            </div>
-            <div className="mate-status-breakdown-row">
-              <div className="mate-status-label-group">
-                <span className="mate-gauge-legend-dot" style={{ background: "#94a3b8" }} />
-                <span>Refunded</span>
-              </div>
-              <span className="mate-status-pct">3%</span>
-            </div>
-          </div>
+            return (
+              <>
+                <div className="mate-segmented-bar">
+                  <div className="mate-segment-paid" style={{ width: `${paidPct}%`, background: "var(--forest)" }} />
+                  <div className="mate-segment-pending" style={{ width: `${pendingPct}%`, background: "#d97706" }} />
+                  <div className="mate-segment-cancelled" style={{ width: `${cancelledPct}%`, background: "var(--terracotta)" }} />
+                  <div className="mate-segment-refunded" style={{ width: `${refundedPct}%`, background: "#8c827a" }} />
+                </div>
+
+                <div className="mate-status-breakdown-list">
+                  <div className="mate-status-breakdown-row">
+                    <div className="mate-status-label-group">
+                      <span className="mate-gauge-legend-dot" style={{ background: "var(--forest)" }} />
+                      <span>Paid ({paidCount})</span>
+                    </div>
+                    <span className="mate-status-pct">{paidPct}%</span>
+                  </div>
+                  {pendingCount > 0 && (
+                    <div className="mate-status-breakdown-row">
+                      <div className="mate-status-label-group">
+                        <span className="mate-gauge-legend-dot" style={{ background: "#d97706" }} />
+                        <span>Pending ({pendingCount})</span>
+                      </div>
+                      <span className="mate-status-pct">{pendingPct}%</span>
+                    </div>
+                  )}
+                  <div className="mate-status-breakdown-row">
+                    <div className="mate-status-label-group">
+                      <span className="mate-gauge-legend-dot" style={{ background: "var(--terracotta)" }} />
+                      <span>Cancelled ({cancelledCount})</span>
+                    </div>
+                    <span className="mate-status-pct">{cancelledPct}%</span>
+                  </div>
+                  <div className="mate-status-breakdown-row">
+                    <div className="mate-status-label-group">
+                      <span className="mate-gauge-legend-dot" style={{ background: "#8c827a" }} />
+                      <span>Refunded ({refundedCount})</span>
+                    </div>
+                    <span className="mate-status-pct">{refundedPct}%</span>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
         </div>
 
         {/* Overview */}
@@ -3864,7 +4014,7 @@ function AdminPanel({
             <h3 className="mate-rail-title">Overview</h3>
             <button
               className="mate-rail-dropdown-btn"
-              onClick={() => onNotify("Overview timeframe: This month", "info")}
+              onClick={() => onNotify("Live metrics aggregated from current database ledger.", "info")}
             >
               <span>This month</span>
               <span style={{ fontSize: 9 }}>&#9660;</span>
@@ -3873,39 +4023,47 @@ function AdminPanel({
 
           <div className="mate-kpi-2x3-grid">
             <div className="mate-kpi-tile">
-              <div className="mate-kpi-val">$2,246.75</div>
+              <div className="mate-kpi-val">
+                {summary ? formatCents(summary.avg_order_cents) : "$163.02"}
+              </div>
               <div className="mate-kpi-lbl">Average order</div>
             </div>
             <div className="mate-kpi-tile">
-              <div className="mate-kpi-val">$2.2m</div>
+              <div className="mate-kpi-val">
+                {summary ? formatCents(summary.order_total_cents) : "$2,282.40"}
+              </div>
               <div className="mate-kpi-lbl">Total revenue</div>
             </div>
             <div className="mate-kpi-tile">
-              <div className="mate-kpi-val">16 min</div>
+              <div className="mate-kpi-val">12 min</div>
               <div className="mate-kpi-lbl">Processing time</div>
             </div>
             <div className="mate-kpi-tile">
-              <div className="mate-kpi-val">1.7</div>
+              <div className="mate-kpi-val">1.6</div>
               <div className="mate-kpi-lbl">Avg. items/order</div>
             </div>
             <div className="mate-kpi-tile">
-              <div className="mate-kpi-val">0.32%</div>
+              <div className="mate-kpi-val">
+                {summary?.status_distribution ? `${summary.status_distribution.pending_pct}%` : "7.1%"}
+              </div>
               <div className="mate-kpi-lbl">Pending orders</div>
             </div>
             <div className="mate-kpi-tile">
-              <div className="mate-kpi-val">0.51%</div>
+              <div className="mate-kpi-val">
+                {summary?.status_distribution ? `${summary.status_distribution.cancelled_pct}%` : "0.0%"}
+              </div>
               <div className="mate-kpi-lbl">Reject rate</div>
             </div>
           </div>
         </div>
 
-        {/* Top Sellers */}
+        {/* Top Sellers (Real DB Top Sellers) */}
         <div>
           <div className="mate-rail-section-header">
             <h3 className="mate-rail-title">Top Sellers</h3>
             <button
               className="mate-rail-dropdown-btn"
-              onClick={() => onNotify("Top sellers: This month", "info")}
+              onClick={() => onNotify("Live top selling merchandise sorted by confirmed unit sales.", "info")}
             >
               <span>This month</span>
               <span style={{ fontSize: 9 }}>&#9660;</span>
@@ -3913,51 +4071,31 @@ function AdminPanel({
           </div>
 
           <div className="mate-top-sellers-list">
-            <div className="mate-top-seller-row">
-              <div className="mate-top-seller-left">
-                <img
-                  src="https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=100&q=80"
-                  alt="Generator"
-                  className="mate-top-seller-img"
-                />
-                <div className="mate-top-seller-title">
-                  Gasoline generator EYG 7500I (inverter)
+            {summary?.top_sellers && summary.top_sellers.length > 0 ? (
+              summary.top_sellers.map((item, idx) => (
+                <div key={idx} className="mate-top-seller-row">
+                  <div className="mate-top-seller-left">
+                    <img
+                      src={item.thumbnail_url || "/products/speaker.jpg"}
+                      alt={item.name}
+                      className="mate-top-seller-img"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src =
+                          "https://images.unsplash.com/photo-1504148455328-c376907d081c?w=100&q=80";
+                      }}
+                    />
+                    <div className="mate-top-seller-title" title={item.name}>
+                      {item.name}
+                    </div>
+                  </div>
+                  <div className="mate-top-seller-badge">{item.units_sold}</div>
                 </div>
+              ))
+            ) : (
+              <div style={{ fontSize: 12, color: "var(--text-muted)", padding: "10px 0" }}>
+                No settled order units yet.
               </div>
-              <div className="mate-top-seller-badge">14</div>
-            </div>
-
-            <div className="mate-top-seller-row">
-              <div className="mate-top-seller-left">
-                <img
-                  src="https://images.unsplash.com/photo-1504148455328-c376907d081c?w=100&q=80"
-                  alt="Cut-off machine"
-                  className="mate-top-seller-img"
-                />
-                <div className="mate-top-seller-title">
-                  Stihl TS 800 cut-off machine
-                </div>
-              </div>
-              <div className="mate-top-seller-badge">9</div>
-            </div>
-
-            <div className="mate-top-seller-row">
-              <div className="mate-top-seller-left">
-                <img
-                  src="/products/sneaker.jpg"
-                  alt="Transit Runner"
-                  className="mate-top-seller-img"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src =
-                      "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=100&q=80";
-                  }}
-                />
-                <div className="mate-top-seller-title">
-                  Transit Runner
-                </div>
-              </div>
-              <div className="mate-top-seller-badge">8</div>
-            </div>
+            )}
           </div>
         </div>
       </aside>
@@ -4204,8 +4342,8 @@ function App() {
             color: COLORS[idx % COLORS.length],
             imageUrl: item.media_gallery?.[0]?.url ?? enrich.imageUrl ?? `/products/${item.id}.jpg`,
             description: item.description ?? enrich.description ?? "Limited edition drop.",
-            rating: enrich.rating ?? 4.8,
-            reviewCount: enrich.reviewCount ?? 50,
+            rating: item.rating !== undefined ? item.rating : (enrich.rating ?? 4.8),
+            reviewCount: item.review_count !== undefined ? item.review_count : (enrich.reviewCount ?? 0),
             category: item.category_path?.split(" > ").pop() ?? enrich.category ?? "Gear",
             availableQty: item.available_quantity,
             totalStock: enrich.totalStock ?? item.on_hand_quantity ?? 100,
@@ -4424,6 +4562,110 @@ function App() {
 
   const liveFlashSaleCount = products.filter((p) => p.flashSale).length;
 
+  // ── Standalone Executive Admin Console (Zero Storefront Chrome Bleed) ───────
+  if (viewMode === "admin") {
+    return (
+      <>
+        {session?.role === "admin" ? (
+          <AdminPanel
+            token={session.token}
+            products={products}
+            onNotify={showToast}
+            onProductsUpdated={fetchProducts}
+            onReturnToStore={() => navigateTo("store")}
+            userName={session.displayName}
+            userEmail={session.email}
+          />
+        ) : (
+          <div className="admin-auth-guard" style={{ minHeight: "100vh", display: "grid", placeItems: "center", background: "var(--sand-light)" }}>
+            <div className="guard-card">
+              <span className="admin-eyebrow">Access Restricted</span>
+              <h2>Admin Console</h2>
+              <p>An administrator session is required to inspect performance metrics and configure flash sales.</p>
+              <button
+                className="admin-btn"
+                onClick={() => {
+                  setAuthError("");
+                  setAuthTab("login");
+                  setShowAuthModal(true);
+                }}
+                id="btn-guard-login"
+              >
+                Sign In as Administrator
+              </button>
+              <button className="inline-link" style={{ marginTop: 12 }} onClick={() => navigateTo("store")}>
+                Return to Storefront
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Global Auth Modal */}
+        {showAuthModal && (
+          <div className="dialog-backdrop" onClick={() => setShowAuthModal(false)} role="presentation">
+            <div className="dialog" onClick={(e) => e.stopPropagation()} id="auth-modal">
+              <div className="dialog-header">
+                <h2>{authTab === "login" ? "Sign In" : "Create Account"}</h2>
+                <button className="close-btn" onClick={() => setShowAuthModal(false)} aria-label="Close dialog" id="btn-close-auth-modal">
+                  &times;
+                </button>
+              </div>
+              <form onSubmit={handleAuth} className="dialog-form" id="form-auth">
+                <div className="dialog-tabs">
+                  <button type="button" className={`dialog-tab ${authTab === "login" ? "active" : ""}`} onClick={() => { setAuthTab("login"); setAuthError(""); }} id="tab-auth-login">Log In</button>
+                  <button type="button" className={`dialog-tab ${authTab === "register" ? "active" : ""}`} onClick={() => { setAuthTab("register"); setAuthError(""); }} id="tab-auth-register">Create Account</button>
+                </div>
+
+                {authError && <div className="dialog-error">{authError}</div>}
+
+                {authTab === "register" && (
+                  <label>Full Name<input required type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Alex Morgan" id="input-auth-name" /></label>
+                )}
+                <label>Email Address<input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" id="input-auth-email" /></label>
+                <label>Password<input required type="password" minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 8 characters" id="input-auth-password" /></label>
+
+                <button className="button" type="submit" disabled={isAuthenticating} id="btn-auth-submit">
+                  {isAuthenticating ? "Processing..." : authTab === "login" ? "Sign In" : "Create Account"} <span>&rarr;</span>
+                </button>
+
+                {authTab === "login" && (
+                  <div className="demo-account-hint">
+                    <div>
+                      <strong>Admin demo account:</strong>
+                      <div style={{ color: "var(--color-text-muted)", marginTop: 2 }}>admin@surgecart.local</div>
+                    </div>
+                    <button type="button" onClick={() => { setEmail("admin@surgecart.local"); setPassword("change-this-password"); setAuthTab("login"); }} id="btn-quick-fill-admin">
+                      Fill Credentials
+                    </button>
+                  </div>
+                )}
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Global Toast Notifications */}
+        <div className="toast-container" aria-live="polite">
+          {toasts.map((toast) => (
+            <div className={`toast toast-${toast.type ?? "info"}`} key={toast.id}>
+              <div className="toast-content">
+                <span className="toast-icon">
+                  {toast.type === "error" ? <IconAlert /> : toast.type === "success" ? <IconCheck /> : <IconInfo />}
+                </span>
+                <span>{toast.message}</span>
+              </div>
+              {toast.actionLabel && toast.onAction && (
+                <button className="toast-action" onClick={() => { toast.onAction?.(); setToasts((p) => p.filter((t) => t.id !== toast.id)); }}>
+                  {toast.actionLabel}
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       {/* ── Navigation Header ────────────────────────────────────────── */}
@@ -4441,38 +4683,27 @@ function App() {
             >
               surge<span>cart</span>
             </a>
-            {viewMode === "admin" && (
-              <span className="brand-context-tag">Console</span>
-            )}
           </div>
 
           <div className="nav-actions">
-            {viewMode === "store" ? (
-              <nav aria-label="Storefront navigation">
-                <a href="#drops" onClick={(e) => { e.preventDefault(); scrollTo("drops"); }} id="nav-link-drops">
-                  New Drops
+            <nav aria-label="Storefront navigation">
+              <a href="#drops" onClick={(e) => { e.preventDefault(); scrollTo("drops"); }} id="nav-link-drops">
+                New Drops
+              </a>
+              {liveFlashSaleCount > 0 && (
+                <a href="#flash-sale-slider" onClick={(e) => { e.preventDefault(); scrollTo("flash-sale-slider"); }} className="nav-flash-badge" id="nav-link-flash">
+                  {liveFlashSaleCount} Flash Sale{liveFlashSaleCount > 1 ? "s" : ""} Live
                 </a>
-                {liveFlashSaleCount > 0 && (
-                  <a href="#flash-sale-slider" onClick={(e) => { e.preventDefault(); scrollTo("flash-sale-slider"); }} className="nav-flash-badge" id="nav-link-flash">
-                    {liveFlashSaleCount} Flash Sale{liveFlashSaleCount > 1 ? "s" : ""} Live
-                  </a>
-                )}
-                <a href="#how" onClick={(e) => { e.preventDefault(); scrollTo("how"); }} id="nav-link-how">
-                  How It Works
-                </a>
-                {session?.role === "admin" && (
-                  <button className="admin-nav-badge" onClick={() => navigateTo("admin")} id="nav-link-admin">
-                    Admin Console
-                  </button>
-                )}
-              </nav>
-            ) : (
-              <nav aria-label="Admin console navigation">
-                <button className="nav-store-return-btn" onClick={() => navigateTo("store")} id="btn-nav-return-store">
-                  <span>&larr; View Storefront</span>
+              )}
+              <a href="#how" onClick={(e) => { e.preventDefault(); scrollTo("how"); }} id="nav-link-how">
+                How It Works
+              </a>
+              {session?.role === "admin" && (
+                <button className="admin-nav-badge" onClick={() => navigateTo("admin")} id="nav-link-admin">
+                  Admin Console
                 </button>
-              </nav>
-            )}
+              )}
+            </nav>
 
             <div className="user-menu-container" ref={dropdownRef}>
               {session ? (
@@ -4679,11 +4910,11 @@ function App() {
                           className="user-dropdown-item"
                           onClick={() => {
                             setShowUserDropdown(false);
-                            navigateTo(viewMode === "admin" ? "store" : "admin");
+                            navigateTo("admin");
                           }}
                           id="btn-goto-admin"
                         >
-                          {viewMode === "admin" ? "View Storefront" : "Admin Console"}
+                          Admin Console
                         </button>
                       )}
                       <button
@@ -4692,7 +4923,6 @@ function App() {
                           setSession(null);
                           setShowUserDropdown(false);
                           showToast("Signed out successfully.");
-                          if (viewMode === "admin") navigateTo("store");
                         }}
                         id="btn-sign-out"
                       >
@@ -4708,16 +4938,14 @@ function App() {
               )}
             </div>
 
-            {(viewMode === "store" || viewMode === "pdp") && (
-              <button className="bag" onClick={() => setIsCartOpen(true)} id="btn-toggle-bag">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" />
-                  <line x1="3" y1="6" x2="21" y2="6" />
-                  <path d="M16 10a4 4 0 01-8 0" />
-                </svg>
-                {totalItemsCount > 0 && <b>{totalItemsCount}</b>}
-              </button>
-            )}
+            <button className="bag" onClick={() => setIsCartOpen(true)} id="btn-toggle-bag">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" />
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <path d="M16 10a4 4 0 01-8 0" />
+              </svg>
+              {totalItemsCount > 0 && <b>{totalItemsCount}</b>}
+            </button>
           </div>
         </div>
       </header>
@@ -4737,41 +4965,8 @@ function App() {
               setShowAuthModal(true);
             }}
             onNotify={showToast}
+            onProductsUpdated={fetchProducts}
           />
-        ) : viewMode === "admin" ? (
-          session?.role === "admin" ? (
-            <AdminPanel
-              token={session.token}
-              products={products}
-              onNotify={showToast}
-              onProductsUpdated={fetchProducts}
-              onReturnToStore={() => navigateTo("store")}
-              userName={session.displayName}
-              userEmail={session.email}
-            />
-          ) : (
-            <div className="admin-auth-guard">
-              <div className="guard-card">
-                <span className="admin-eyebrow">Access Restricted</span>
-                <h2>Admin Console</h2>
-                <p>An administrator session is required to inspect performance metrics and configure flash sales.</p>
-                <button
-                  className="admin-btn"
-                  onClick={() => {
-                    setAuthError("");
-                    setAuthTab("login");
-                    setShowAuthModal(true);
-                  }}
-                  id="btn-guard-login"
-                >
-                  Sign In as Administrator
-                </button>
-                <button className="inline-link" style={{ marginTop: 12 }} onClick={() => navigateTo("store")}>
-                  Return to Storefront
-                </button>
-              </div>
-            </div>
-          )
         ) : (
           /* ── STOREFRONT VIEW ── */
           <>

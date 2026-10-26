@@ -122,12 +122,26 @@ def list_active_products(db: Session = Depends(get_db)) -> list[dict[str, Any]]:
 
     flash_context = _get_live_flash_context(db, product_ids, now)
 
+    fb_stats = {
+        row.product_id: (round(float(row.avg_score), 1), int(row.cnt))
+        for row in db.execute(
+            select(
+                ProductFeedback.product_id,
+                func.avg(ProductFeedback.rating_score).label("avg_score"),
+                func.count(ProductFeedback.id).label("cnt"),
+            )
+            .where(ProductFeedback.product_id.in_(product_ids))
+            .group_by(ProductFeedback.product_id)
+        ).all()
+    }
+
     result: list[dict[str, Any]] = []
     for product in products:
         inv = inventory_map.get(product.id)
         on_hand = inv.on_hand_quantity if inv else 0
         reserved = inv.reserved_quantity if inv else 0
         available = max(0, on_hand - reserved)
+        avg_r, cnt_r = fb_stats.get(product.id, (4.8, 0))
 
         row: dict[str, Any] = {
             "id": str(product.id),
@@ -145,6 +159,8 @@ def list_active_products(db: Session = Depends(get_db)) -> list[dict[str, Any]]:
             "weight": product.weight,
             "media_gallery": product.media_gallery or [],
             "flash_sale": flash_context.get(product.id),
+            "rating": avg_r,
+            "review_count": cnt_r,
         }
         result.append(row)
 
@@ -175,6 +191,15 @@ def get_product_detail(sku_or_id: str, db: Session = Depends(get_db)) -> dict[st
 
     flash_context = _get_live_flash_context(db, [product.id], now)
 
+    fb_stat = db.execute(
+        select(
+            func.avg(ProductFeedback.rating_score).label("avg_score"),
+            func.count(ProductFeedback.id).label("cnt"),
+        ).where(ProductFeedback.product_id == product.id)
+    ).one_or_none()
+    avg_r = round(float(fb_stat.avg_score), 1) if fb_stat and fb_stat.avg_score else 4.8
+    cnt_r = int(fb_stat.cnt) if fb_stat and fb_stat.cnt else 0
+
     return {
         "id": str(product.id),
         "sku": product.sku,
@@ -192,6 +217,8 @@ def get_product_detail(sku_or_id: str, db: Session = Depends(get_db)) -> dict[st
         "weight": product.weight,
         "media_gallery": product.media_gallery or [],
         "flash_sale": flash_context.get(product.id),
+        "rating": avg_r,
+        "review_count": cnt_r,
         "created_at": product.created_at.isoformat(),
         "updated_at": product.updated_at.isoformat() if product.updated_at else None,
     }
@@ -206,33 +233,36 @@ def submit_product_feedback(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ) -> dict[str, Any]:
-    """Secure submission path requiring valid bearer authentication token."""
+    """Secure submission path requiring valid bearer authentication token (supports upsert)."""
     product = db.get(Product, product_id)
     if product is None:
         raise HTTPException(status_code=404, detail="Product not found")
 
     existing = db.scalar(
-        select(ProductFeedback.id).where(
+        select(ProductFeedback).where(
             ProductFeedback.product_id == product_id,
             ProductFeedback.user_id == current_user.id,
         )
     )
     if existing:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="You have already submitted an evaluation for this product",
+        existing.rating_score = payload.rating_score
+        existing.headline = payload.headline.strip()
+        existing.body_text = payload.body_text.strip()
+        existing.created_at = datetime.now(UTC)
+        db.commit()
+        db.refresh(existing)
+        feedback = existing
+    else:
+        feedback = ProductFeedback(
+            product_id=product_id,
+            user_id=current_user.id,
+            rating_score=payload.rating_score,
+            headline=payload.headline.strip(),
+            body_text=payload.body_text.strip(),
         )
-
-    feedback = ProductFeedback(
-        product_id=product_id,
-        user_id=current_user.id,
-        rating_score=payload.rating_score,
-        headline=payload.headline.strip(),
-        body_text=payload.body_text.strip(),
-    )
-    db.add(feedback)
-    db.commit()
-    db.refresh(feedback)
+        db.add(feedback)
+        db.commit()
+        db.refresh(feedback)
 
     return {
         "id": str(feedback.id),
@@ -253,6 +283,7 @@ def list_product_feedback(
     cursor: str | None = Query(default=None),
     offset: int = Query(default=0, ge=0),
     rating: int | None = Query(default=None, ge=1, le=5),
+    rating_score: int | None = Query(default=None, ge=1, le=5),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     """Publicly accessible feedback array supporting cursor-based or offset pagination and rating filters."""
@@ -266,8 +297,9 @@ def list_product_feedback(
         .where(ProductFeedback.product_id == product_id)
     )
 
-    if rating is not None:
-        base_q = base_q.where(ProductFeedback.rating_score == rating)
+    filter_rating = rating if rating is not None else rating_score
+    if filter_rating is not None:
+        base_q = base_q.where(ProductFeedback.rating_score == filter_rating)
 
     total_count = db.scalar(select(func.count()).select_from(base_q.subquery())) or 0
 

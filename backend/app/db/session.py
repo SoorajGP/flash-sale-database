@@ -35,7 +35,13 @@ def _get_engine():
 
     if target_url.startswith("sqlite"):
         return create_engine(target_url, connect_args={"check_same_thread": False})
-    return create_engine(target_url, pool_pre_ping=True)
+    return create_engine(
+        target_url,
+        pool_pre_ping=True,
+        pool_size=30,
+        max_overflow=50,
+        pool_timeout=30.0,
+    )
 
 
 engine = _get_engine()
