@@ -5,10 +5,11 @@ from contextlib import asynccontextmanager
 import logging
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.router import api_router
 from app.core.config import get_settings
-from app.db.session import SessionLocal
+from app.db.session import SessionLocal, init_db
 from app.modules.inventory.service import release_expired_reservations, warm_inventory_cache
 
 logger = logging.getLogger("surgecart")
@@ -32,6 +33,12 @@ async def periodic_reservation_cleanup() -> None:
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    # Ensure tables exist and default data is seeded
+    try:
+        init_db()
+    except Exception as e:
+        logger.warning("Could not auto-initialize DB: %s", e)
+
     # Warm Redis inventory cache on startup
     try:
         db = SessionLocal()
@@ -53,8 +60,16 @@ async def lifespan(_: FastAPI):
 
 def create_app() -> FastAPI:
     app = FastAPI(title=get_settings().app_name, version="0.1.0", lifespan=lifespan)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
     app.include_router(api_router)
     return app
 
 
 app = create_app()
+

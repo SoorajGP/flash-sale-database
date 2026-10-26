@@ -1,9 +1,6 @@
-"""Create a local administrator and three storefront products.
-
-Run after `alembic upgrade head` with: `python -m app.seed`.
-"""
-
+import uuid
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from app.core.security import hash_password
 from app.db.session import SessionLocal
@@ -19,24 +16,43 @@ PRODUCTS = [
 ]
 
 
+def seed_db(db: Session) -> None:
+    admin = db.scalar(select(User).where(User.email == "admin@surgecart.local"))
+    if admin is None:
+        db.add(
+            User(
+                email="admin@surgecart.local",
+                display_name="SurgeCart Admin",
+                password_hash=hash_password("change-this-password"),
+                role=UserRole.ADMIN,
+            )
+        )
+    for sku, name, description, price_cents, stock in PRODUCTS:
+        if db.scalar(select(Product.id).where(Product.sku == sku)):
+            continue
+        pid = uuid.uuid5(uuid.NAMESPACE_DNS, sku)
+        product = Product(id=pid, sku=sku, name=name, description=description, price_cents=price_cents)
+        db.add(product)
+        db.flush()
+        db.add(Inventory(product_id=product.id, on_hand_quantity=stock))
+        db.add(
+            InventoryMovement(
+                product_id=product.id,
+                movement_type=InventoryMovementType.RESTOCK,
+                quantity_delta=stock,
+                reference_type="seed",
+                reference_id=product.id,
+                idempotency_key=f"seed:{product.id}",
+            )
+        )
+
+
 def main() -> None:
     with SessionLocal.begin() as db:
-        admin = db.scalar(select(User).where(User.email == "admin@surgecart.local"))
-        if admin is None:
-            db.add(User(email="admin@surgecart.local", display_name="SurgeCart Admin",
-                        password_hash=hash_password("change-this-password"), role=UserRole.ADMIN))
-        for sku, name, description, price_cents, stock in PRODUCTS:
-            if db.scalar(select(Product.id).where(Product.sku == sku)):
-                continue
-            product = Product(sku=sku, name=name, description=description, price_cents=price_cents)
-            db.add(product)
-            db.flush()
-            db.add(Inventory(product_id=product.id, on_hand_quantity=stock))
-            db.add(InventoryMovement(product_id=product.id, movement_type=InventoryMovementType.RESTOCK,
-                                     quantity_delta=stock, reference_type="seed", reference_id=product.id,
-                                     idempotency_key=f"seed:{product.id}"))
+        seed_db(db)
     print("Seeded admin@surgecart.local and storefront products.")
 
 
 if __name__ == "__main__":
     main()
+

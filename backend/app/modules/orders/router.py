@@ -29,6 +29,12 @@ from app.modules.sales.models import FlashSale, FlashSaleProduct, FlashSaleStatu
 router = APIRouter(prefix="/orders", tags=["orders"])
 
 
+def ensure_utc(dt: datetime) -> datetime:
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=UTC)
+    return dt.astimezone(UTC)
+
+
 def order_payload(order: Order, payment_reference: str | None = None, reservation_expires_at: datetime | None = None) -> dict:
     payload = {
         "id": str(order.id),
@@ -301,7 +307,7 @@ def confirm_demo_payment(order_id: UUID, db: Annotated[Session, Depends(get_db)]
         )
     )
 
-    if not reservations or any(row.expires_at < datetime.now(UTC) for row in reservations):
+    if not reservations or any(ensure_utc(row.expires_at) < datetime.now(UTC) for row in reservations):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="The payment hold has expired")
 
     # Order product IDs to avoid deadlock

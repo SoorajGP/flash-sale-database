@@ -9,12 +9,21 @@ type Product = {
   badge: string;
   color: string;
   stock?: number;
+  // enriched UI fields (fallback only)
+  imageUrl?: string;
+  description?: string;
+  rating?: number;
+  reviewCount?: number;
+  category?: string;
+  totalStock?: number;
 };
 
 type ApiProduct = {
   id: string;
+  sku?: string;
   name: string;
   price_cents: number;
+  currency?: string;
 };
 
 type CartItem = {
@@ -44,16 +53,100 @@ type CompletedOrder = {
   items: CartItem[];
 };
 
+// Enriched fallback catalogue - looks like a real store
 const fallbackProducts: Product[] = [
-  { id: "sneaker", name: "Transit Runner", price: 129, badge: "Limited 150", color: "sand" },
-  { id: "speaker", name: "Pulse Mini", price: 79, badge: "New drop", color: "blue" },
-  { id: "bag", name: "Weekender 02", price: 98, badge: "Last chance", color: "orange" },
+  {
+    id: "867ba046-d776-5cb0-941d-56cb7d3a812f",
+    name: "Transit Runner",
+    price: 129,
+    badge: "Limited 150",
+    color: "sand",
+    imageUrl: "/products/sneaker.jpg",
+    description: "Suede & mesh upper. Cushioned EVA midsole. Unisex sizing.",
+    rating: 4.8,
+    reviewCount: 214,
+    category: "Footwear",
+    totalStock: 150,
+    stock: 32,
+  },
+  {
+    id: "5299be1f-2ea3-5d48-afb5-a728135d958e",
+    name: "Pulse Mini",
+    price: 79,
+    badge: "New drop",
+    color: "blue",
+    imageUrl: "/products/speaker.jpg",
+    description: "360° sound. IPX5 waterproof. 12-hour battery. Bluetooth 5.3.",
+    rating: 4.6,
+    reviewCount: 98,
+    category: "Audio",
+    totalStock: 200,
+    stock: 61,
+  },
+  {
+    id: "422f1457-f19d-5f3a-89a2-64f2fd21789f",
+    name: "Weekender 02",
+    price: 98,
+    badge: "Last chance",
+    color: "olive",
+    imageUrl: "/products/bag.jpg",
+    description: "Waxed canvas shell. Full-grain leather trim. 42L capacity.",
+    rating: 4.9,
+    reviewCount: 357,
+    category: "Carry",
+    totalStock: 80,
+    stock: 9,
+  },
 ];
 
-const colors = ["sand", "blue", "orange"];
+const colors = ["sand", "blue", "olive"];
+
+const enrichmentMap: Record<string, Partial<Product>> = {
+  sneaker: fallbackProducts[0],
+  speaker: fallbackProducts[1],
+  bag: fallbackProducts[2],
+  "TRANSIT-RUNNER": fallbackProducts[0],
+  "PULSE-MINI": fallbackProducts[1],
+  "WEEKENDER-02": fallbackProducts[2],
+  "867ba046-d776-5cb0-941d-56cb7d3a812f": fallbackProducts[0],
+  "5299be1f-2ea3-5d48-afb5-a728135d958e": fallbackProducts[1],
+  "422f1457-f19d-5f3a-89a2-64f2fd21789f": fallbackProducts[2],
+};
 
 const formatPrice = (value: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
+
+function StarRating({ rating }: { rating: number }) {
+  const full = Math.floor(rating);
+  const half = rating - full >= 0.5;
+  return (
+    <span className="stars" aria-label={`${rating} out of 5`}>
+      {Array.from({ length: 5 }, (_, i) => {
+        if (i < full) return <span key={i} className="star filled">★</span>;
+        if (i === full && half) return <span key={i} className="star half">★</span>;
+        return <span key={i} className="star">★</span>;
+      })}
+    </span>
+  );
+}
+
+function StockBar({ stock, total }: { stock: number; total: number }) {
+  const pct = Math.max(0, Math.min(100, (stock / total) * 100));
+  const lowStock = stock <= 15;
+  return (
+    <div className="stock-bar-wrap">
+      <div className="stock-bar-track">
+        <div
+          className={`stock-bar-fill ${lowStock ? "low" : ""}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <span className={`stock-label ${lowStock ? "low" : ""}`}>
+        {lowStock ? `Only ${stock} left!` : `${stock} in stock`}
+      </span>
+    </div>
+  );
+}
 
 function AdminPanel({
   token,
@@ -130,10 +223,10 @@ function AdminPanel({
       <div className="admin-header">
         <div>
           <p className="eyebrow">ADMINISTRATION</p>
-          <h2>Store Overview & Controls</h2>
+          <h2>Store Overview &amp; Controls</h2>
         </div>
         <button className="admin-btn secondary" onClick={fetchDashboard} id="btn-refresh-admin">
-          ↻ Refresh Data
+          ↻ Refresh
         </button>
       </div>
 
@@ -159,7 +252,7 @@ function AdminPanel({
           disabled={isRestocking}
           id="btn-restock-all"
         >
-          {isRestocking ? "Restocking..." : "⚡ Restock All Products (+25)"}
+          {isRestocking ? "Restocking…" : "⚡ Restock All (+25)"}
         </button>
         <button
           className="admin-btn secondary"
@@ -167,7 +260,7 @@ function AdminPanel({
           disabled={isCleaning}
           id="btn-clean-holds"
         >
-          {isCleaning ? "Reclaiming..." : "♻ Purge Expired Holds"}
+          {isCleaning ? "Reclaiming…" : "♻ Purge Expired Holds"}
         </button>
         <span className="fine">Admin session active. Background worker purges expired reservations every 30s.</span>
       </div>
@@ -193,40 +286,62 @@ function App() {
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
 
-  // Button micro-state feedback (e.g. Added!)
   const [recentlyAddedId, setRecentlyAddedId] = useState<string | null>(null);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
 
-  // Countdown timer for drop
-  const [secondsRemaining, setSecondsRemaining] = useState(28795); // ~8 hours
+  // Countdown timer
+  const [secondsRemaining, setSecondsRemaining] = useState(28795);
 
   // Toasts
   const [toasts, setToasts] = useState<Toast[]>([]);
 
+  // Scroll header shadow
+  const [isScrolled, setIsScrolled] = useState(false);
+
   const totalItemsCount = useMemo(() => cart.reduce((sum, item) => sum + item.quantity, 0), [cart]);
   const totalPrice = useMemo(() => cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0), [cart]);
 
-  // Load products from API
+  useEffect(() => {
+    const onScroll = () => setIsScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // Load products from API, merge with enrichment data
   useEffect(() => {
     fetch("/api/v1/products")
       .then((res) => (res.ok ? (res.json() as Promise<ApiProduct[]>) : Promise.reject()))
       .then((items) => {
         if (items.length) {
           setProducts(
-            items.map((item, index) => ({
-              id: item.id,
-              name: item.name,
-              price: item.price_cents / 100,
-              badge: index === 0 ? "Featured Drop" : "Available Now",
-              color: colors[index % colors.length],
-            }))
+            items.map((item, index) => {
+              const enrich =
+                enrichmentMap[item.id] ??
+                (item.sku ? enrichmentMap[item.sku] : undefined) ??
+                fallbackProducts[index % fallbackProducts.length] ??
+                {};
+              return {
+                id: item.id,
+                name: item.name,
+                price: item.price_cents / 100,
+                badge: index === 0 ? "Featured Drop" : "Available Now",
+                color: colors[index % colors.length],
+                imageUrl: enrich.imageUrl ?? `/products/${item.id}.jpg`,
+                description: enrich.description ?? "Limited edition drop.",
+                rating: enrich.rating ?? 4.5,
+                reviewCount: enrich.reviewCount ?? 50,
+                category: enrich.category ?? "Gear",
+                totalStock: enrich.totalStock ?? 100,
+                stock: enrich.stock ?? 25,
+              };
+            })
           );
         }
       })
       .catch(() => undefined);
   }, []);
 
-  // Ticking countdown timer synced with server clock
+  // Countdown synced with server clock
   useEffect(() => {
     fetch("/api/v1/system/time")
       .then((res) => (res.ok ? res.json() : null))
@@ -266,9 +381,7 @@ function App() {
     }, 4500);
   };
 
-  // Add product to cart
   const addToBag = async (product: Product) => {
-    // Optimistically update local cart
     setCart((prev) => {
       const existing = prev.find((item) => item.product.id === product.id);
       if (existing) {
@@ -279,14 +392,11 @@ function App() {
       return [...prev, { product, quantity: 1 }];
     });
 
-    // Provide immediate visual feedback on the button
     setRecentlyAddedId(product.id);
-    setTimeout(() => setRecentlyAddedId(null), 1200);
+    setTimeout(() => setRecentlyAddedId(null), 1500);
 
-    // Toast notification with "View Bag" action
     showToast(`${product.name} added to your bag`, "success", "View Bag", () => setIsCartOpen(true));
 
-    // Sync with backend API
     try {
       let activeCart = cartId;
       if (!activeCart) {
@@ -301,7 +411,6 @@ function App() {
           setCartId(activeCart);
         }
       }
-
       if (activeCart) {
         await fetch(`/api/v1/carts/${activeCart}/items`, {
           method: "POST",
@@ -310,14 +419,13 @@ function App() {
         });
       }
     } catch {
-      // Fallback works seamlessly offline
+      // Fallback works offline
     }
   };
 
-  // Update item quantity
   const updateQuantity = (productId: string, delta: number) => {
-    setCart((prev) => {
-      return prev
+    setCart((prev) =>
+      prev
         .map((item) => {
           if (item.product.id === productId) {
             const newQty = item.quantity + delta;
@@ -325,17 +433,15 @@ function App() {
           }
           return item;
         })
-        .filter(Boolean) as CartItem[];
-    });
+        .filter(Boolean) as CartItem[]
+    );
   };
 
-  // Remove item completely
   const removeItem = (productId: string) => {
     setCart((prev) => prev.filter((item) => item.product.id !== productId));
     showToast("Item removed from bag");
   };
 
-  // Checkout process
   const handleCheckout = async () => {
     if (!cart.length) {
       showToast("Your bag is empty. Add a product first!", "info");
@@ -346,7 +452,6 @@ function App() {
     try {
       let activeCart = cartId;
 
-      // Ensure active cart exists on server with current items
       if (!activeCart) {
         const createdRes = await fetch("/api/v1/carts", {
           method: "POST",
@@ -359,21 +464,23 @@ function App() {
         setCartId(activeCart);
 
         for (const item of cart) {
-          await fetch(`/api/v1/carts/${activeCart}/items`, {
+          const itemRes = await fetch(`/api/v1/carts/${activeCart}/items`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ product_id: item.product.id, quantity: item.quantity }),
           });
+          if (!itemRes.ok) {
+            const errData = await itemRes.json().catch(() => ({}));
+            throw new Error(errData.detail || `Could not reserve ${item.product.name} in bag.`);
+          }
         }
       }
 
-      // Client idempotency key to prevent double checkout on connection drops or double clicks
       const idempotencyKey =
         typeof crypto !== "undefined" && crypto.randomUUID
           ? crypto.randomUUID()
           : `chk-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
-      // Step 1: Checkout & reserve stock
       const orderRes = await fetch(`/api/v1/orders/checkout/${activeCart}`, {
         method: "POST",
         headers: {
@@ -383,14 +490,13 @@ function App() {
       });
       if (!orderRes.ok) {
         if (orderRes.status === 429) {
-          throw new Error("High checkout volume! You are in line—please wait a few seconds and try again.");
+          throw new Error("High checkout volume! You're in line — please wait a few seconds and try again.");
         }
         const errData = await orderRes.json().catch(() => ({}));
         throw new Error(errData.detail || "Checkout reservation could not be completed.");
       }
       const order = await orderRes.json();
 
-      // Step 2: Confirm demo payment
       const payRes = await fetch(`/api/v1/orders/${order.id}/pay`, { method: "POST" });
       if (!payRes.ok) {
         const errData = await payRes.json().catch(() => ({}));
@@ -398,7 +504,6 @@ function App() {
       }
       const paid = await payRes.json();
 
-      // Complete order
       setCompletedOrder({
         orderNumber: paid.order_number,
         totalCents: paid.total_cents,
@@ -406,19 +511,25 @@ function App() {
         items: [...cart],
       });
 
-      // Reset state for new purchases
       setCart([]);
       setCartId(null);
       setIsCartOpen(false);
       showToast(`Order ${paid.order_number} confirmed!`, "success");
     } catch (err: any) {
-      showToast(err.message || "Checkout failed. Product inventory may be sold out.", "error");
+      const isNetworkErr =
+        err?.name === "TypeError" &&
+        (err?.message?.includes("fetch") || err?.message?.includes("Network") || err?.message?.includes("Failed"));
+      showToast(
+        isNetworkErr
+          ? "Unable to reach checkout server. Please make sure the backend API is running."
+          : err.message || "Checkout failed. Product inventory may be sold out.",
+        "error"
+      );
     } finally {
       setIsCheckingOut(false);
     }
   };
 
-  // Auth: Sign in / Register
   const handleAuth = async (event: FormEvent) => {
     event.preventDefault();
     setAuthError("");
@@ -471,7 +582,6 @@ function App() {
     }
   };
 
-  // Demo Admin quick login
   const handleAdminQuickFill = () => {
     setEmail("admin@surgecart.local");
     setPassword("change-this-password");
@@ -487,8 +597,8 @@ function App() {
 
   return (
     <>
-      {/* Sticky Navigation Header */}
-      <header className="header-wrapper">
+      {/* ── Navigation ── */}
+      <header className={`header-wrapper${isScrolled ? " header-scrolled" : ""}`}>
         <div className="nav">
           <a
             className="brand"
@@ -506,40 +616,30 @@ function App() {
             <nav aria-label="Primary">
               <a
                 href="#drops"
-                onClick={(e) => {
-                  e.preventDefault();
-                  scrollToSection("drops");
-                }}
+                onClick={(e) => { e.preventDefault(); scrollToSection("drops"); }}
                 id="nav-link-drops"
               >
-                Drops
+                New Drops
               </a>
               <a
                 href="#how"
-                onClick={(e) => {
-                  e.preventDefault();
-                  scrollToSection("how");
-                }}
+                onClick={(e) => { e.preventDefault(); scrollToSection("how"); }}
                 id="nav-link-how"
               >
-                How it works
+                How It Works
               </a>
               {session?.role === "admin" && (
                 <a
                   href="#admin"
                   className="admin-nav-badge"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    scrollToSection("admin");
-                  }}
+                  onClick={(e) => { e.preventDefault(); scrollToSection("admin"); }}
                   id="nav-link-admin"
                 >
-                  Admin Portal
+                  Admin
                 </a>
               )}
             </nav>
 
-            {/* User Session / Login Button */}
             <div className="user-menu-container">
               {session ? (
                 <>
@@ -562,10 +662,7 @@ function App() {
                       {session.role === "admin" && (
                         <button
                           className="user-dropdown-item"
-                          onClick={() => {
-                            setShowUserDropdown(false);
-                            scrollToSection("admin");
-                          }}
+                          onClick={() => { setShowUserDropdown(false); scrollToSection("admin"); }}
                           id="btn-goto-admin"
                         >
                           ⚡ Admin Dashboard
@@ -588,49 +685,69 @@ function App() {
               ) : (
                 <button
                   className="auth-button"
-                  onClick={() => {
-                    setAuthError("");
-                    setShowAuthModal(true);
-                  }}
+                  onClick={() => { setAuthError(""); setShowAuthModal(true); }}
                   id="btn-open-login"
                 >
-                  Log in
+                  Sign In
                 </button>
               )}
             </div>
 
-            {/* Bag Button - Toggles Drawer */}
             <button className="bag" onClick={() => setIsCartOpen(true)} id="btn-toggle-bag">
-              Bag <b>{totalItemsCount}</b>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+              {totalItemsCount > 0 && <b>{totalItemsCount}</b>}
             </button>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
+      {/* ── Main Content ── */}
       <main id="top">
-        {/* Hero Section */}
+
+        {/* ── Hero ── */}
         <section className="hero">
-          <div>
+          <div className="hero-text">
             <p className="eyebrow">TODAY'S FEATURED DROP</p>
             <h1>
-              Get there
-              <br />
-              <em>first.</em>
+              Limited goods.<br />
+              <em>Fair access.</em>
             </h1>
             <p className="hero-copy">
-              Thoughtful goods. Limited runs. A checkout designed to be fair when demand is high.
+              Curated products released in small batches. Every checkout is protected with row-level stock locks — first to confirm, first to own.
             </p>
-            <button
-              className="button"
-              onClick={() => scrollToSection("drops")}
-              id="btn-shop-drop-hero"
-            >
-              Shop the drop <span>→</span>
-            </button>
+            <div className="hero-actions">
+              <button
+                className="button"
+                onClick={() => scrollToSection("drops")}
+                id="btn-shop-drop-hero"
+              >
+                Shop the Drop <span>→</span>
+              </button>
+              <button
+                className="button-ghost"
+                onClick={() => scrollToSection("how")}
+                id="btn-how-hero"
+              >
+                How it works
+              </button>
+            </div>
+            <div className="trust-row">
+              <span className="trust-item">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                Free shipping over $75
+              </span>
+              <span className="trust-item">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                Secure checkout
+              </span>
+              <span className="trust-item">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                Ships worldwide
+              </span>
+            </div>
           </div>
 
-          {/* Interactive Drop Countdown Card */}
+          {/* Countdown card */}
           <div
             className="hero-card"
             onClick={() => scrollToSection("drops")}
@@ -642,100 +759,136 @@ function App() {
               <span className="hero-card-pulse" />
             </div>
             <div className="hero-card-body">
+              <p className="hero-card-label">Sale ends in</p>
               <strong>{formattedCountdown}</strong>
               <div className="hero-card-caption">
-                <span>time remaining in drop</span>
-                <span className="hero-card-link">Browse collection →</span>
+                <span>Limited stock — act fast</span>
+                <span className="hero-card-link">Browse →</span>
               </div>
             </div>
             <div className="orb" />
           </div>
         </section>
 
-        {/* Drops / Products Section */}
+        {/* ── Products ── */}
         <section id="drops" className="products">
           <div className="section-heading">
             <div>
-              <p className="eyebrow">SHOP NOW</p>
-              <h2>Made for the moment.</h2>
+              <p className="eyebrow">NEW DROPS</p>
+              <h2>This week's releases.</h2>
             </div>
-            <p>Every item is released in limited allocations. Once reserved and sold out, it’s gone.</p>
+            <p>Every item ships in limited quantities. Once the allocation is gone, it's gone for good.</p>
           </div>
 
           <div className="grid">
             {products.map((product) => {
               const isAdded = recentlyAddedId === product.id;
+              const stock = product.stock ?? 25;
+              const total = product.totalStock ?? 100;
               return (
                 <article key={product.id} className="product" id={`product-card-${product.id}`}>
-                  <div className={`product-image ${product.color}`}>
-                    <span>{product.badge}</span>
-                    <span className="product-stock-pill">In Stock</span>
-                    <div className="shape" />
+                  {/* Product image */}
+                  <div className="product-image-wrap">
+                    {product.imageUrl ? (
+                      <img
+                        src={product.imageUrl}
+                        alt={product.name}
+                        className="product-img"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className={`product-image-fallback ${product.color}`}>
+                        <div className="shape" />
+                      </div>
+                    )}
+                    <span className="product-badge">{product.badge}</span>
+                    {product.category && (
+                      <span className="product-category">{product.category}</span>
+                    )}
                   </div>
-                  <div className="product-info">
-                    <div>
-                      <h3>{product.name}</h3>
-                      <p>SurgeCart studio edition</p>
+
+                  {/* Product info */}
+                  <div className="product-body">
+                    <div className="product-meta">
+                      {product.rating !== undefined && (
+                        <div className="product-rating">
+                          <StarRating rating={product.rating} />
+                          <span className="review-count">({product.reviewCount})</span>
+                        </div>
+                      )}
+                      <h3 className="product-name">{product.name}</h3>
+                      {product.description && (
+                        <p className="product-desc">{product.description}</p>
+                      )}
                     </div>
-                    <div className="product-price">{formatPrice(product.price)}</div>
+
+                    <div className="product-footer">
+                      <StockBar stock={stock} total={total} />
+                      <div className="product-price-row">
+                        <span className="product-price">{formatPrice(product.price)}</span>
+                        <button
+                          className={`product-add-btn ${isAdded ? "added" : ""}`}
+                          onClick={() => void addToBag(product)}
+                          id={`btn-add-${product.id}`}
+                        >
+                          {isAdded ? "Added ✓" : "Add to Bag"}
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  <button
-                    className={`product-add-btn ${isAdded ? "added" : ""}`}
-                    onClick={() => void addToBag(product)}
-                    id={`btn-add-${product.id}`}
-                  >
-                    {isAdded ? "Added to Bag ✓" : "Add to bag"}
-                    <span>{isAdded ? "✓" : "+"}</span>
-                  </button>
                 </article>
               );
             })}
           </div>
         </section>
 
-        {/* How It Works Section */}
+        {/* ── How It Works ── */}
         <section id="how" className="steps">
-          <p className="eyebrow">A FAIRER DROP</p>
-          <h2>
-            Quick, clear, and
-            <br />
-            built for everyone.
-          </h2>
-          <div className="step-grid">
-            <div className="step-card">
-              <p>
-                <b>01</b>
-                Limited inventory is shown clearly before you buy, preventing false hope and hidden queues.
-              </p>
+          <div className="steps-inner">
+            <div className="steps-header">
+              <p className="eyebrow" style={{ color: "#9dc9a8" }}>HOW IT WORKS</p>
+              <h2>Fair drops for<br /><em>real people.</em></h2>
+              <p className="steps-sub">We built SurgeCart so bots can't win. Every checkout is fair, transparent, and fast.</p>
             </div>
-            <div className="step-card">
-              <p>
-                <b>02</b>
-                Your item is securely held with database row-level locks for 10 minutes while you complete checkout.
-              </p>
-            </div>
-            <div className="step-card">
-              <p>
-                <b>03</b>
-                Demo payment adapter instantly confirms the order and commits inventory. Fast and safe.
-              </p>
+            <div className="step-grid">
+              <div className="step-card">
+                <div className="step-icon">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                </div>
+                <h4>Browse openly</h4>
+                <p>Stock levels are visible before you buy. No hidden queues, no false scarcity messaging.</p>
+              </div>
+              <div className="step-card">
+                <div className="step-icon">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                </div>
+                <h4>Your item is held</h4>
+                <p>When you check out, your stock is locked with a database-level row lock for 10 minutes while you pay.</p>
+              </div>
+              <div className="step-card">
+                <div className="step-icon">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+                <h4>Instant confirmation</h4>
+                <p>Payment confirms and commits inventory atomically. You get an order number immediately.</p>
+              </div>
             </div>
           </div>
         </section>
 
-        {/* Bag / Checkout Section */}
+        {/* ── Checkout Banner ── */}
         <section className="checkout-banner" id="checkout-summary">
           <div>
-            <p className="eyebrow">YOUR CURRENT SELECTION</p>
+            <p className="eyebrow">YOUR BAG</p>
             <h2>
               {totalItemsCount > 0
                 ? `${totalItemsCount} item${totalItemsCount > 1 ? "s" : ""} · ${formatPrice(totalPrice)}`
-                : "Your bag is waiting."}
+                : "Your bag is empty."}
             </h2>
             <p className="fine" style={{ margin: "4px 0 0" }}>
               {totalItemsCount > 0
-                ? "Items are ready for reservation. Click checkout to lock stock."
-                : "Select any drop above to begin."}
+                ? "Ready to reserve. Complete checkout to lock your stock."
+                : "Explore this week's drops above."}
             </p>
           </div>
 
@@ -755,37 +908,54 @@ function App() {
               disabled={isCheckingOut || totalItemsCount === 0}
               id="btn-checkout-bottom"
             >
-              {isCheckingOut ? "Reserving..." : "Checkout now"} <span>→</span>
+              {isCheckingOut ? "Reserving…" : "Checkout"} <span>→</span>
             </button>
           </div>
         </section>
 
-        {/* Admin Dashboard if logged in as admin */}
+        {/* ── Admin Panel ── */}
         {session?.role === "admin" && (
           <AdminPanel token={session.token} products={products} onNotify={showToast} />
         )}
       </main>
 
-      {/* Footer */}
+      {/* ── Footer ── */}
       <footer>
-        <a
-          className="brand"
-          href="#top"
-          onClick={(e) => {
-            e.preventDefault();
-            window.scrollTo({ top: 0, behavior: "smooth" });
-          }}
-          id="footer-brand"
-        >
-          surge<span>cart</span>
-        </a>
-        <p>Limited drops, fairly sold. High-concurrency flash sale platform.</p>
-        <a href="mailto:hello@surgecart.local" id="footer-contact">
-          hello@surgecart.local
-        </a>
+        <div className="footer-brand-col">
+          <a
+            className="brand"
+            href="#top"
+            onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+            id="footer-brand"
+          >
+            surge<span>cart</span>
+          </a>
+          <p className="footer-tagline">Limited drops, fairly sold.</p>
+        </div>
+
+        <div className="footer-links">
+          <div className="footer-link-group">
+            <strong>Shop</strong>
+            <a href="#drops" onClick={(e) => { e.preventDefault(); scrollToSection("drops"); }}>New Drops</a>
+            <a href="#how" onClick={(e) => { e.preventDefault(); scrollToSection("how"); }}>How It Works</a>
+          </div>
+          <div className="footer-link-group">
+            <strong>Support</strong>
+            <a href="mailto:hello@surgecart.local" id="footer-contact">Contact Us</a>
+            <a href="#faq">Returns &amp; Exchanges</a>
+            <a href="#faq">Shipping Info</a>
+          </div>
+        </div>
+
+        <div className="footer-bottom">
+          <span>© 2025 SurgeCart. All rights reserved.</span>
+          <span>
+            <a href="#privacy">Privacy Policy</a> · <a href="#terms">Terms of Use</a>
+          </span>
+        </div>
       </footer>
 
-      {/* Cart Drawer (Slide-out panel) */}
+      {/* ── Cart Drawer ── */}
       {isCartOpen && (
         <div
           className="drawer-backdrop"
@@ -799,7 +969,7 @@ function App() {
           >
             <div className="drawer-header">
               <h2>
-                Your Bag <span>({totalItemsCount})</span>
+                Your Bag {totalItemsCount > 0 && <span>({totalItemsCount})</span>}
               </h2>
               <button
                 className="close-btn"
@@ -813,15 +983,14 @@ function App() {
 
             {cart.length === 0 ? (
               <div className="drawer-empty">
-                <div className="drawer-empty-icon">🛍️</div>
+                <div className="drawer-empty-icon">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+                </div>
                 <h3>Your bag is empty</h3>
-                <p>Explore today's limited drops and grab your item before allocations run out.</p>
+                <p>Explore this week's limited drops and add something before it sells out.</p>
                 <button
                   className="button"
-                  onClick={() => {
-                    setIsCartOpen(false);
-                    scrollToSection("drops");
-                  }}
+                  onClick={() => { setIsCartOpen(false); scrollToSection("drops"); }}
                   id="btn-drawer-explore"
                 >
                   Explore Drops <span>→</span>
@@ -832,12 +1001,16 @@ function App() {
                 <div className="drawer-items">
                   {cart.map((item) => (
                     <div className="cart-item" key={item.product.id}>
-                      <div className={`cart-item-thumb ${item.product.color}`}>
-                        <span style={{ fontSize: "18px" }}>📦</span>
+                      <div className="cart-item-thumb">
+                        {item.product.imageUrl ? (
+                          <img src={item.product.imageUrl} alt={item.product.name} />
+                        ) : (
+                          <div className={`cart-item-thumb-fallback ${item.product.color}`} />
+                        )}
                       </div>
                       <div className="cart-item-details">
                         <div className="cart-item-title">{item.product.name}</div>
-                        <div className="cart-item-price">{formatPrice(item.product.price)} each</div>
+                        <div className="cart-item-price">{formatPrice(item.product.price)}</div>
                       </div>
                       <div className="cart-qty-controls">
                         <button
@@ -845,18 +1018,14 @@ function App() {
                           onClick={() => updateQuantity(item.product.id, -1)}
                           aria-label="Decrease quantity"
                           id={`btn-qty-minus-${item.product.id}`}
-                        >
-                          −
-                        </button>
+                        >−</button>
                         <span className="cart-qty-val">{item.quantity}</span>
                         <button
                           className="cart-qty-btn"
                           onClick={() => updateQuantity(item.product.id, 1)}
                           aria-label="Increase quantity"
                           id={`btn-qty-plus-${item.product.id}`}
-                        >
-                          +
-                        </button>
+                        >+</button>
                       </div>
                       <button
                         className="cart-item-remove"
@@ -864,23 +1033,31 @@ function App() {
                         aria-label="Remove item"
                         title="Remove"
                         id={`btn-remove-${item.product.id}`}
-                      >
-                        ✕
-                      </button>
+                      >✕</button>
                     </div>
                   ))}
                 </div>
 
                 <div className="drawer-footer">
-                  <div className="drawer-hold-pill">
-                    <span>⚡</span> Items are held with row-level locks for 10 min during checkout.
+                  <div className="drawer-hold-card" id="drawer-hold-card">
+                    <div className="drawer-hold-badge">
+                      <span className="drawer-hold-pulse" aria-hidden="true" />
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                      </svg>
+                    </div>
+                    <div className="drawer-hold-text">
+                      <div className="drawer-hold-title">Stock held for 10 minutes</div>
+                      <div className="drawer-hold-subtitle">Your allocation is reserved during checkout</div>
+                    </div>
                   </div>
                   <div className="drawer-summary-row">
                     <span>Subtotal</span>
                     <span>{formatPrice(totalPrice)}</span>
                   </div>
                   <div className="drawer-summary-row">
-                    <span>Flash Drop Shipping</span>
+                    <span>Shipping</span>
                     <span style={{ color: "var(--color-terracotta)", fontWeight: 600 }}>Free</span>
                   </div>
                   <div className="drawer-summary-row total">
@@ -893,7 +1070,7 @@ function App() {
                     disabled={isCheckingOut}
                     id="btn-drawer-checkout"
                   >
-                    {isCheckingOut ? "Reserving & Authorizing..." : "Complete Checkout"} <span>→</span>
+                    {isCheckingOut ? "Reserving & Authorizing…" : "Complete Checkout"} <span>→</span>
                   </button>
                 </div>
               </>
@@ -902,7 +1079,7 @@ function App() {
         </div>
       )}
 
-      {/* Authentication Modal (Login & Registration) */}
+      {/* ── Auth Modal ── */}
       {showAuthModal && (
         <div
           className="dialog-backdrop"
@@ -921,36 +1098,24 @@ function App() {
               onClick={() => setShowAuthModal(false)}
               aria-label="Close dialog"
               id="btn-close-auth"
-            >
-              ✕
-            </button>
+            >✕</button>
 
             <p className="eyebrow">{authTab === "login" ? "WELCOME BACK" : "JOIN SURGECART"}</p>
-            <h2>{authTab === "login" ? "Sign In to Account" : "Create Customer Account"}</h2>
+            <h2>{authTab === "login" ? "Sign In" : "Create Account"}</h2>
 
             <div className="dialog-tabs">
               <button
                 type="button"
                 className={`dialog-tab ${authTab === "login" ? "active" : ""}`}
-                onClick={() => {
-                  setAuthTab("login");
-                  setAuthError("");
-                }}
+                onClick={() => { setAuthTab("login"); setAuthError(""); }}
                 id="tab-auth-login"
-              >
-                Log In
-              </button>
+              >Log In</button>
               <button
                 type="button"
                 className={`dialog-tab ${authTab === "register" ? "active" : ""}`}
-                onClick={() => {
-                  setAuthTab("register");
-                  setAuthError("");
-                }}
+                onClick={() => { setAuthTab("register"); setAuthError(""); }}
                 id="tab-auth-register"
-              >
-                Create Account
-              </button>
+              >Create Account</button>
             </div>
 
             {authError && <div className="dialog-error">{authError}</div>}
@@ -1001,7 +1166,7 @@ function App() {
               id="btn-auth-submit"
             >
               {isAuthenticating
-                ? "Processing..."
+                ? "Processing…"
                 : authTab === "login"
                 ? "Sign In"
                 : "Create Account"}{" "}
@@ -1011,15 +1176,11 @@ function App() {
             {authTab === "login" && (
               <div className="demo-account-hint">
                 <div>
-                  <strong>Admin demo account:</strong>
-                  <div style={{ color: "var(--color-text-muted)" }}>admin@surgecart.local</div>
+                  <strong>Admin demo:</strong>
+                  <div style={{ color: "var(--color-text-muted)", marginTop: 2 }}>admin@surgecart.local</div>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleAdminQuickFill}
-                  id="btn-quick-fill-admin"
-                >
-                  ⚡ Fill Admin Credentials
+                <button type="button" onClick={handleAdminQuickFill} id="btn-quick-fill-admin">
+                  ⚡ Quick Fill
                 </button>
               </div>
             )}
@@ -1027,7 +1188,7 @@ function App() {
         </div>
       )}
 
-      {/* Order Confirmation Modal */}
+      {/* ── Order Confirmation Modal ── */}
       {completedOrder && (
         <div
           className="dialog-backdrop"
@@ -1040,10 +1201,10 @@ function App() {
             id="order-success-modal"
           >
             <div className="order-success-icon">✓</div>
-            <p className="eyebrow">PAYMENT CONFIRMED</p>
-            <h2>Thank You for Your Order!</h2>
-            <p className="hero-copy" style={{ margin: "8px auto 16px" }}>
-              Your limited-drop allocation has been locked and confirmed.
+            <p className="eyebrow">ORDER CONFIRMED</p>
+            <h2>Thank you!</h2>
+            <p className="hero-copy" style={{ margin: "8px auto 16px", fontSize: 15 }}>
+              Your allocation has been locked and confirmed. A confirmation email is on its way.
             </p>
 
             <div className="order-success-number">{completedOrder.orderNumber}</div>
@@ -1054,7 +1215,7 @@ function App() {
                 <b>{formatPrice(completedOrder.totalCents / 100)}</b>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span>Payment Provider:</span>
+                <span>Payment:</span>
                 <span style={{ color: "var(--color-terracotta)", fontWeight: 600 }}>Demo Verified</span>
               </div>
             </div>
@@ -1071,12 +1232,12 @@ function App() {
         </div>
       )}
 
-      {/* Floating Toast Notification Container */}
+      {/* ── Toast Notifications ── */}
       <div className="toast-container" aria-live="polite">
         {toasts.map((toast) => (
-          <div className="toast" key={toast.id}>
+          <div className={`toast toast-${toast.type ?? "info"}`} key={toast.id}>
             <div className="toast-content">
-              <span>{toast.type === "error" ? "⚠️" : toast.type === "success" ? "✓" : "ℹ️"}</span>
+              <span>{toast.type === "error" ? "⚠" : toast.type === "success" ? "✓" : "ℹ"}</span>
               <span>{toast.message}</span>
             </div>
             {toast.actionLabel && toast.onAction && (

@@ -22,7 +22,7 @@ class CartCreate(BaseModel):
 
 
 class CartItemCreate(BaseModel):
-    product_id: UUID
+    product_id: str | UUID
     quantity: int = Field(ge=1, le=20)
     flash_sale_product_id: UUID | None = None
 
@@ -55,14 +55,44 @@ def add_item(cart_id: UUID, payload: CartItemCreate, db: Annotated[Session, Depe
     cart = db.get(Cart, cart_id)
     if cart is None or cart.status is not CartStatus.ACTIVE:
         raise HTTPException(status_code=404, detail="Active cart not found")
-    product = db.get(Product, payload.product_id)
+
+    alias_map = {
+        "sneaker": "TRANSIT-RUNNER",
+        "speaker": "PULSE-MINI",
+        "bag": "WEEKENDER-02",
+    }
+    raw_id = str(payload.product_id).strip()
+    target_sku = alias_map.get(raw_id.lower(), raw_id)
+
+    product = None
+    # 1. Try UUID lookup
+    try:
+        parsed_uuid = UUID(raw_id)
+        product = db.get(Product, parsed_uuid)
+    except (ValueError, AttributeError):
+        pass
+
+    # 2. Try SKU lookup
+    if product is None:
+        product = db.scalar(select(Product).where(Product.sku.ilike(target_sku)))
+    if product is None:
+        product = db.scalar(select(Product).where(Product.sku.ilike(raw_id)))
+    if product is None:
+        product = db.scalar(select(Product).where(Product.name.ilike(f"%{raw_id}%")))
+
     if product is None or not product.is_active:
         raise HTTPException(status_code=404, detail="Active product not found")
-    item = db.scalar(select(CartItem).where(CartItem.cart_id == cart_id, CartItem.product_id == payload.product_id))
+
+    item = db.scalar(select(CartItem).where(CartItem.cart_id == cart_id, CartItem.product_id == product.id))
     if item:
         item.quantity += payload.quantity
     else:
-        item = CartItem(cart_id=cart_id, product_id=payload.product_id, quantity=payload.quantity, flash_sale_product_id=payload.flash_sale_product_id)
+        item = CartItem(
+            cart_id=cart_id,
+            product_id=product.id,
+            quantity=payload.quantity,
+            flash_sale_product_id=payload.flash_sale_product_id,
+        )
         db.add(item)
     db.commit()
     return {"cart_id": str(cart_id), "item_id": str(item.id), "quantity": item.quantity}
