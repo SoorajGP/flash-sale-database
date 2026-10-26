@@ -27,6 +27,12 @@ import "./styles.css";
 
 // ─── Type definitions ────────────────────────────────────────────────────────
 
+type MediaAsset = {
+  url: string;
+  alt: string;
+  display_order: number;
+};
+
 /** Shape returned by the enriched GET /api/v1/products endpoint */
 type ApiProduct = {
   id: string;
@@ -37,6 +43,13 @@ type ApiProduct = {
   currency: string;
   on_hand_quantity: number;
   available_quantity: number;
+  reserved_quantity?: number;
+  vendor_id?: string | null;
+  vendor_name?: string | null;
+  category_path?: string | null;
+  dimensions?: { length?: number; width?: number; height?: number; unit?: string } | null;
+  weight?: number | null;
+  media_gallery?: MediaAsset[];
   flash_sale?: {
     flash_sale_id: string;
     flash_sale_product_id: string;
@@ -67,7 +80,31 @@ type Product = {
   category?: string;
   availableQty: number;
   totalStock: number;
+  vendorId?: string | null;
+  vendorName?: string | null;
+  categoryPath?: string | null;
+  dimensions?: { length?: number; width?: number; height?: number; unit?: string } | null;
+  weight?: number | null;
+  mediaGallery?: MediaAsset[];
   flashSale?: ApiProduct["flash_sale"];
+};
+
+type FeedbackItem = {
+  id: string;
+  product_id: string;
+  user_id: string;
+  user_name: string;
+  rating_score: number;
+  headline: string;
+  body_text: string;
+  created_at: string;
+};
+
+type FeedbackSummary = {
+  mean_score: number;
+  total_count: number;
+  distribution: Record<string, { count: number; percentage: number }>;
+  recommended_percentage: number;
 };
 
 type CartItem = {
@@ -299,18 +336,53 @@ function IconPin() {
   );
 }
 
+function IconStar({ filled = true, size = 15 }: { filled?: boolean; size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+    </svg>
+  );
+}
+
+function IconShield() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    </svg>
+  );
+}
+
+function IconTruck() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="1" y="3" width="15" height="13" />
+      <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+      <circle cx="5.5" cy="18.5" r="2.5" />
+      <circle cx="18.5" cy="18.5" r="2.5" />
+    </svg>
+  );
+}
+
+function IconRotate() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+      <path d="M3 3v5h5" />
+    </svg>
+  );
+}
+
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
-function StarRating({ rating }: { rating: number }) {
-  const full = Math.floor(rating);
-  const half = rating - full >= 0.5;
+function StarRating({ rating, size = 13 }: { rating: number; size?: number }) {
+  const rounded = Math.round(rating);
   return (
-    <span className="stars" aria-label={`${rating} out of 5`}>
-      {Array.from({ length: 5 }, (_, i) => {
-        if (i < full) return <span key={i} className="star filled">&#9733;</span>;
-        if (i === full && half) return <span key={i} className="star half">&#9733;</span>;
-        return <span key={i} className="star">&#9733;</span>;
-      })}
+    <span className="stars" aria-label={`${rating} out of 5`} style={{ display: "inline-flex", gap: 2, alignItems: "center" }}>
+      {Array.from({ length: 5 }, (_, i) => (
+        <span key={i} style={{ color: i < rounded ? "#f59e0b" : "#d1d5db", display: "inline-flex" }}>
+          <IconStar filled={i < rounded} size={size} />
+        </span>
+      ))}
     </span>
   );
 }
@@ -397,11 +469,13 @@ function FlashSaleSlider({
   products,
   serverOffsetMs,
   onAddToBag,
+  onOpenProduct,
   recentlyAddedId,
 }: {
   products: Product[];
   serverOffsetMs: number;
   onAddToBag: (p: Product) => void;
+  onOpenProduct?: (sku: string) => void;
   recentlyAddedId: string | null;
 }) {
   const flashProducts = useMemo(() => products.filter((p) => p.flashSale), [products]);
@@ -470,7 +544,12 @@ function FlashSaleSlider({
 
             return (
               <div key={product.id} className="flash-slider-card" id={`slider-card-${product.id}`}>
-                <div className="product-image-wrap">
+                <div
+                  className="product-image-wrap"
+                  onClick={() => onOpenProduct && onOpenProduct(product.sku)}
+                  style={{ cursor: onOpenProduct ? "pointer" : "default" }}
+                  title={`View ${product.name} specifications`}
+                >
                   {product.imageUrl ? (
                     <img src={product.imageUrl} alt={product.name} className="product-img" loading="eager" />
                   ) : (
@@ -491,7 +570,14 @@ function FlashSaleSlider({
                         <span className="review-count">({product.reviewCount})</span>
                       </div>
                     )}
-                    <h3 className="product-name">{product.name}</h3>
+                    <h3
+                      className="product-name"
+                      onClick={() => onOpenProduct && onOpenProduct(product.sku)}
+                      style={{ cursor: onOpenProduct ? "pointer" : "default" }}
+                      title={`View ${product.name} details`}
+                    >
+                      {product.name}
+                    </h3>
                     {product.description && <p className="product-desc">{product.description}</p>}
                   </div>
 
@@ -1034,18 +1120,1534 @@ function CreateFlashSaleTab({
   );
 }
 
+// ─── Markdown Viewer Component ───────────────────────────────────────────────
+
+function MarkdownView({ content }: { content: string }) {
+  if (!content) return null;
+  const lines = content.split("\n");
+  const elements: React.ReactNode[] = [];
+  let currentList: string[] = [];
+
+  const flushList = (key: number) => {
+    if (currentList.length > 0) {
+      elements.push(
+        <ul key={`ul-${key}`} style={{ paddingLeft: "1.2rem", margin: "6px 0" }}>
+          {currentList.map((item, idx) => (
+            <li key={idx} style={{ marginBottom: "3px" }}>{renderInline(item)}</li>
+          ))}
+        </ul>
+      );
+      currentList = [];
+    }
+  };
+
+  const renderInline = (text: string) => {
+    const parts = text.split(/(\*\*[^*]+\*\*)/g);
+    return parts.map((part, idx) => {
+      if (part.startsWith("**") && part.endsWith("**")) {
+        return <strong key={idx}>{part.slice(2, -2)}</strong>;
+      }
+      return part;
+    });
+  };
+
+  lines.forEach((line, idx) => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
+      currentList.push(trimmed.slice(2));
+    } else {
+      flushList(idx);
+      if (trimmed.startsWith("### ")) {
+        elements.push(<h4 key={idx} style={{ margin: "10px 0 4px", fontSize: "14px", fontWeight: 700 }}>{trimmed.slice(4)}</h4>);
+      } else if (trimmed.startsWith("## ")) {
+        elements.push(<h3 key={idx} style={{ margin: "12px 0 4px", fontSize: "16px", fontWeight: 700 }}>{trimmed.slice(3)}</h3>);
+      } else if (trimmed.startsWith("# ")) {
+        elements.push(<h2 key={idx} style={{ margin: "14px 0 6px", fontSize: "18px", fontWeight: 700 }}>{trimmed.slice(2)}</h2>);
+      } else if (trimmed.length > 0) {
+        elements.push(<p key={idx} style={{ margin: "4px 0" }}>{renderInline(trimmed)}</p>);
+      }
+    }
+  });
+  flushList(lines.length);
+
+  return <div className="markdown-render">{elements}</div>;
+}
+
+// ─── Interactive Media Viewer ────────────────────────────────────────────────
+
+function ProductMediaViewer({
+  gallery,
+  fallbackImage,
+  productName,
+}: {
+  gallery?: MediaAsset[];
+  fallbackImage: string;
+  productName: string;
+}) {
+  const images = useMemo(() => {
+    if (gallery && gallery.length > 0) {
+      return [...gallery].sort((a, b) => a.display_order - b.display_order);
+    }
+    return [{ url: fallbackImage, alt: productName, display_order: 0 }];
+  }, [gallery, fallbackImage, productName]);
+
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [isZoomed, setIsZoomed] = useState(false);
+  const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 });
+  const activeAsset = images[activeIndex] || images[0];
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    setZoomPos({ x, y });
+  };
+
+  return (
+    <div className="pdp-gallery-viewport">
+      <div
+        className="pdp-main-image-wrap"
+        onMouseEnter={() => setIsZoomed(true)}
+        onMouseLeave={() => setIsZoomed(false)}
+        onMouseMove={handleMouseMove}
+      >
+        <img
+          src={activeAsset.url}
+          alt={activeAsset.alt || productName}
+          className={`pdp-main-image ${isZoomed ? "zoomed" : ""}`}
+          style={isZoomed ? { transformOrigin: `${zoomPos.x}% ${zoomPos.y}%` } : undefined}
+        />
+        <div className="pdp-zoom-badge">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+          <span>{isZoomed ? "Lens Magnified" : "Hover to Magnify"}</span>
+        </div>
+        <div className="pdp-image-counter">
+          {activeIndex + 1} / {images.length}
+        </div>
+      </div>
+
+      {images.length > 1 && (
+        <div className="pdp-thumbnail-strip">
+          {images.map((asset, idx) => (
+            <button
+              key={idx}
+              type="button"
+              className={`pdp-thumb-btn ${activeIndex === idx ? "active" : ""}`}
+              onClick={() => setActiveIndex(idx)}
+              aria-label={`View image ${idx + 1}`}
+            >
+              <img src={asset.url} alt={asset.alt || `${productName} view ${idx + 1}`} />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Consumer Sentiment & Social Proof Engine ────────────────────────────────
+
+function ProductSentimentEngine({
+  productId,
+  session,
+  onRequireAuth,
+  onNotify,
+}: {
+  productId: string;
+  session: Session | null;
+  onRequireAuth: () => void;
+  onNotify: (msg: string, type?: "success" | "error") => void;
+}) {
+  const [summary, setSummary] = useState<FeedbackSummary | null>(null);
+  const [reviews, setReviews] = useState<FeedbackItem[]>([]);
+  const [selectedStarFilter, setSelectedStarFilter] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Review modal form state
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [formRating, setFormRating] = useState(5);
+  const [formHeadline, setFormHeadline] = useState("");
+  const [formBody, setFormBody] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState("");
+
+  const loadData = useCallback(() => {
+    setLoading(true);
+    const summaryP = fetch(`/api/v1/products/${productId}/feedback/summary`)
+      .then((r) => (r.ok ? r.json() : null))
+      .catch(() => null);
+
+    const filterQuery = selectedStarFilter ? `?rating_score=${selectedStarFilter}` : "";
+    const reviewsP = fetch(`/api/v1/products/${productId}/feedback${filterQuery}`)
+      .then((r) => (r.ok ? r.json() : []))
+      .catch(() => []);
+
+    Promise.all([summaryP, reviewsP])
+      .then(([sumData, revData]) => {
+        if (sumData) setSummary(sumData);
+        if (Array.isArray(revData)) setReviews(revData);
+      })
+      .finally(() => setLoading(false));
+  }, [productId, selectedStarFilter]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const handleOpenWriteReview = () => {
+    if (!session) {
+      onRequireAuth();
+      return;
+    }
+    setFormRating(5);
+    setFormHeadline("");
+    setFormBody("");
+    setFormError("");
+    setIsModalOpen(true);
+  };
+
+  const handleSubmitReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!session) return;
+    if (!formHeadline.trim()) {
+      setFormError("Please enter a summary headline.");
+      return;
+    }
+    if (!formBody.trim()) {
+      setFormError("Please provide feedback details.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setFormError("");
+
+    try {
+      const res = await fetch(`/api/v1/products/${productId}/feedback`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.token}`,
+        },
+        body: JSON.stringify({
+          rating_score: formRating,
+          headline: formHeadline.trim(),
+          body_text: formBody.trim(),
+        }),
+      });
+
+      if (res.ok) {
+        setIsModalOpen(false);
+        onNotify("Thank you! Your verified feedback was published.", "success");
+        loadData();
+      } else {
+        const err = await res.json().catch(() => ({ detail: "Submission failed." }));
+        setFormError(err.detail || "Unable to submit feedback.");
+      }
+    } catch {
+      setFormError("Network communication error.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const meanScore = summary?.mean_score ?? 5.0;
+  const totalCount = summary?.total_count ?? reviews.length;
+  const recPct = summary?.recommended_percentage ?? 100;
+
+  return (
+    <section className="pdp-sentiment-section" id="sentiment-section">
+      <div className="sentiment-section-header">
+        <div>
+          <h2 className="sentiment-section-title">Verified Customer Sentiment</h2>
+          <p className="sentiment-section-sub">
+            Authentic product reviews and ratings directly from verified buyers.
+          </p>
+        </div>
+        <button
+          className="admin-btn"
+          style={{ background: "var(--forest)", color: "#fff" }}
+          onClick={handleOpenWriteReview}
+          id="btn-write-review"
+        >
+          Write a Review
+        </button>
+      </div>
+
+      <div className="sentiment-split-layout">
+        {/* Left Column: Aggregate Summary Module */}
+        <div className="sentiment-summary-card">
+          <div className="summary-score-hero">
+            <div className="summary-big-number">
+              {meanScore.toFixed(1)} <span className="summary-scale">/ 5</span>
+            </div>
+            <div className="summary-stars-row">
+              <StarRating rating={meanScore} size={18} />
+            </div>
+            <div className="summary-meta-sub">
+              Based on {totalCount} verified buyer {totalCount === 1 ? "review" : "reviews"}
+            </div>
+          </div>
+
+          <div className="summary-recommendation">
+            {recPct}% of customers recommend this item
+          </div>
+
+          {/* 5-Tier Star Histogram */}
+          <div className="sentiment-histogram">
+            {[5, 4, 3, 2, 1].map((stars) => {
+              const tierData = summary?.distribution?.[String(stars)];
+              const pct = tierData?.percentage ?? 0;
+              const count = tierData?.count ?? 0;
+              const isActive = selectedStarFilter === stars;
+
+              return (
+                <div
+                  key={stars}
+                  className={`histogram-row ${isActive ? "active" : ""}`}
+                  onClick={() => setSelectedStarFilter(isActive ? null : stars)}
+                  title={`Filter by ${stars} star reviews`}
+                >
+                  <span className="histogram-star-label">{stars} Star</span>
+                  <div className="histogram-bar-track">
+                    <div className="histogram-bar-fill" style={{ width: `${pct}%` }} />
+                  </div>
+                  <span className="histogram-count">{count}</span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Filter Bar */}
+          <div className="sentiment-filter-bar">
+            <button
+              className={`sentiment-filter-pill ${selectedStarFilter === null ? "active" : ""}`}
+              onClick={() => setSelectedStarFilter(null)}
+            >
+              All Reviews
+            </button>
+            {[5, 4, 3, 2, 1].map((stars) => (
+              <button
+                key={stars}
+                className={`sentiment-filter-pill ${selectedStarFilter === stars ? "active" : ""}`}
+                onClick={() => setSelectedStarFilter(stars)}
+              >
+                {stars} Stars
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Right Column: Chronological Scroll List */}
+        <div className="sentiment-reviews-column">
+          <div className="reviews-column-header">
+            <span>
+              {selectedStarFilter ? `${selectedStarFilter}-Star Feedback` : "All Feedback Entries"} ({reviews.length})
+            </span>
+            {selectedStarFilter && (
+              <button className="inline-link" onClick={() => setSelectedStarFilter(null)}>
+                Clear Filter
+              </button>
+            )}
+          </div>
+
+          {reviews.length === 0 ? (
+            <div className="catalog-empty-search" style={{ padding: "40px 20px" }}>
+              <h3>No reviews found</h3>
+              <p>Be the first customer to share your experience with this item.</p>
+              <button className="table-btn primary" onClick={handleOpenWriteReview}>
+                Write First Review
+              </button>
+            </div>
+          ) : (
+            reviews.map((rev) => (
+              <article key={rev.id} className="sentiment-review-card">
+                <div className="review-header-row">
+                  <div className="review-user-info">
+                    <div className="review-avatar">
+                      {rev.user_name.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <div className="review-user-name">{rev.user_name}</div>
+                      <span className="review-verified-badge">
+                        <IconShield /> Verified Buyer
+                      </span>
+                    </div>
+                  </div>
+                  <div className="review-date">
+                    {new Date(rev.created_at).toLocaleDateString("en-US", {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                    })}
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <StarRating rating={rev.rating_score} size={14} />
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "var(--forest)" }}>
+                    {rev.rating_score}.0 / 5
+                  </span>
+                </div>
+
+                <h3 className="review-headline">{rev.headline}</h3>
+                <p className="review-body">{rev.body_text}</p>
+              </article>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* Write a Review Modal Dialog */}
+      {isModalOpen && (
+        <div className="modal-backdrop" onClick={() => !isSubmitting && setIsModalOpen(false)}>
+          <div className="dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520 }}>
+            <h2 style={{ margin: "0 0 6px", fontSize: 20, color: "var(--forest)" }}>Write a Review</h2>
+            <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--text-muted)" }}>
+              Share your direct evaluation of product quality, durability, and fit.
+            </p>
+
+            {formError && <div className="dialog-error">{formError}</div>}
+
+            <form onSubmit={handleSubmitReview}>
+              <div style={{ marginBottom: 16 }}>
+                <label className="admin-field-label">Overall Rating Score</label>
+                <div className="review-modal-stars">
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      className={`star-btn ${s <= formRating ? "filled" : ""}`}
+                      onClick={() => setFormRating(s)}
+                      aria-label={`${s} star rating`}
+                    >
+                      <IconStar filled={s <= formRating} size={28} />
+                    </button>
+                  ))}
+                  <span style={{ marginLeft: 8, fontSize: 13, fontWeight: 600, color: "var(--forest)", alignSelf: "center" }}>
+                    {formRating === 5 ? "5 Stars - Outstanding" :
+                     formRating === 4 ? "4 Stars - Great Quality" :
+                     formRating === 3 ? "3 Stars - Average" :
+                     formRating === 2 ? "2 Stars - Below Expectations" : "1 Star - Disappointed"}
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 14 }}>
+                <label className="admin-field-label">Headline Summary</label>
+                <input
+                  type="text"
+                  maxLength={255}
+                  value={formHeadline}
+                  onChange={(e) => setFormHeadline(e.target.value)}
+                  placeholder="e.g. Exceptional craftsmanship and ultra lightweight"
+                  className="admin-field-input"
+                  required
+                />
+              </div>
+
+              <div style={{ marginBottom: 20 }}>
+                <label className="admin-field-label">Detailed Review</label>
+                <textarea
+                  rows={4}
+                  value={formBody}
+                  onChange={(e) => setFormBody(e.target.value)}
+                  placeholder="Provide in-depth observations on materials, ergonomics, and daily performance..."
+                  className="admin-field-textarea"
+                  style={{ width: "100%" }}
+                  required
+                />
+              </div>
+
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                <button
+                  type="button"
+                  className="admin-btn secondary"
+                  onClick={() => setIsModalOpen(false)}
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="admin-btn"
+                  style={{ background: "var(--forest)", color: "#fff" }}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? "Publishing..." : "Submit Verified Feedback"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+// ─── Customer-Facing Dynamic Product Layout (PDP) ───────────────────────────
+
+function ProductDetailPage({
+  skuOrId,
+  serverOffsetMs,
+  onAddToBag,
+  onNavigateHome,
+  session,
+  onRequireAuth,
+  onNotify,
+}: {
+  skuOrId: string;
+  serverOffsetMs: number;
+  onAddToBag: (product: Product, quantity?: number) => void;
+  onNavigateHome: () => void;
+  session: Session | null;
+  onRequireAuth: () => void;
+  onNotify: (msg: string, type?: "success" | "error") => void;
+}) {
+  const [product, setProduct] = useState<Product | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [activeTab, setActiveTab] = useState<"overview" | "specs" | "logistics">("overview");
+  const [quantity, setQuantity] = useState(1);
+  const [isAdded, setIsAdded] = useState(false);
+
+  useEffect(() => {
+    setLoading(true);
+    setError("");
+    fetch(`/api/v1/products/${encodeURIComponent(skuOrId)}`)
+      .then((r) => {
+        if (!r.ok) throw new Error("Product not found");
+        return r.json() as Promise<ApiProduct>;
+      })
+      .then((item) => {
+        const enrich =
+          uuidEnrichMap[item.id] ??
+          enrichmentMap[item.sku] ??
+          {};
+        const mapped: Product = {
+          id: item.id,
+          sku: item.sku,
+          name: item.name,
+          price: item.price_cents / 100,
+          salePrice: item.flash_sale ? item.flash_sale.sale_price_cents / 100 : undefined,
+          badge: item.flash_sale ? "Flash Deal" : "Available Now",
+          color: "sand",
+          imageUrl: item.media_gallery?.[0]?.url ?? enrich.imageUrl ?? `/products/${item.id}.jpg`,
+          description: item.description ?? enrich.description ?? "Limited release merchandise.",
+          rating: enrich.rating ?? 4.8,
+          reviewCount: enrich.reviewCount ?? 120,
+          category: item.category_path?.split(" > ").pop() ?? enrich.category ?? "Gear",
+          availableQty: item.available_quantity,
+          totalStock: item.on_hand_quantity ?? 100,
+          vendorId: item.vendor_id,
+          vendorName: item.vendor_name,
+          categoryPath: item.category_path,
+          dimensions: item.dimensions,
+          weight: item.weight,
+          mediaGallery: item.media_gallery,
+          flashSale: item.flash_sale,
+        };
+        setProduct(mapped);
+      })
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
+  }, [skuOrId]);
+
+  if (loading) {
+    return (
+      <div className="pdp-wrapper" style={{ textAlign: "center", padding: "100px 20px" }}>
+        <p style={{ color: "var(--text-muted)", fontSize: 16 }}>Loading product specifications...</p>
+      </div>
+    );
+  }
+
+  if (error || !product) {
+    return (
+      <div className="pdp-wrapper" style={{ textAlign: "center", padding: "100px 20px" }}>
+        <h2>Product Unavailable</h2>
+        <p style={{ color: "var(--text-muted)", margin: "8px 0 24px" }}>
+          The requested release identifier could not be retrieved from the catalog ledger.
+        </p>
+        <button className="table-btn primary" onClick={onNavigateHome}>
+          Return to Storefront
+        </button>
+      </div>
+    );
+  }
+
+  const isFlash = !!product.flashSale;
+  const remainingStock = isFlash ? product.flashSale!.units_remaining : product.availableQty;
+  const orderCap = isFlash ? Math.min(product.flashSale!.per_customer_limit, remainingStock) : remainingStock;
+  const isSoldOut = remainingStock <= 0;
+  const discountPct = isFlash && product.salePrice
+    ? Math.round(((product.price - product.salePrice) / product.price) * 100)
+    : 0;
+
+  const handleCommitToCart = () => {
+    if (isSoldOut) return;
+    onAddToBag(product, quantity);
+    setIsAdded(true);
+    setTimeout(() => setIsAdded(false), 2200);
+  };
+
+  return (
+    <div className="pdp-wrapper" id="pdp-container">
+      {/* Navigation & Breadcrumbs */}
+      <nav className="pdp-nav-bar" aria-label="Product navigation">
+        <button className="pdp-back-btn" onClick={onNavigateHome} id="btn-pdp-back">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+            <line x1="19" y1="12" x2="5" y2="12" />
+            <polyline points="12 19 5 12 12 5" />
+          </svg>
+          <span>Back to Catalog</span>
+        </button>
+
+        <div className="pdp-breadcrumbs">
+          <a href="#drops" onClick={(e) => { e.preventDefault(); onNavigateHome(); }}>Catalog</a>
+          <span>/</span>
+          {product.categoryPath ? (
+            <span>{product.categoryPath}</span>
+          ) : (
+            <span>{product.category || "Releases"}</span>
+          )}
+          <span>/</span>
+          <span style={{ color: "var(--forest)", fontWeight: 600 }}>{product.sku}</span>
+        </div>
+      </nav>
+
+      {/* Split-Pane 3-Column Layout */}
+      <div className="pdp-split-pane">
+        {/* Col 1: Primary Viewport / Interactive Media Viewer */}
+        <ProductMediaViewer
+          gallery={product.mediaGallery}
+          fallbackImage={product.imageUrl || "/products/sneaker.jpg"}
+          productName={product.name}
+        />
+
+        {/* Col 2: Information Column */}
+        <div className="pdp-info-column">
+          {product.vendorName && (
+            <div className="pdp-vendor-badge">
+              <IconShield />
+              <span>Fulfilled by {product.vendorName}</span>
+            </div>
+          )}
+
+          <div>
+            <h1 className="pdp-title">{product.name}</h1>
+            <div className="pdp-sku-meta" style={{ marginTop: 4 }}>
+              SKU: {product.sku} &bull; Category: {product.categoryPath || product.category || "General"}
+            </div>
+          </div>
+
+          {/* Social Proof Star Preview */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <StarRating rating={product.rating || 5} size={15} />
+            <a
+              href="#sentiment-section"
+              className="inline-link"
+              style={{ fontSize: 13, textDecoration: "underline" }}
+              onClick={(e) => {
+                e.preventDefault();
+                document.getElementById("sentiment-section")?.scrollIntoView({ behavior: "smooth" });
+              }}
+            >
+              Verified Customer Ratings &amp; Reviews
+            </a>
+          </div>
+
+          {/* Active Drop Promotion Banner */}
+          {isFlash && product.flashSale && (
+            <div className="pdp-flash-banner">
+              <div className="flash-banner-top">
+                <span>Active Flash Sale Allocation</span>
+                <div className="flash-banner-timer">
+                  <FlashCountdown endsAt={product.flashSale.sale_ends_at} serverOffsetMs={serverOffsetMs} />
+                </div>
+              </div>
+              <div className="flash-banner-progress">
+                <div
+                  className="flash-banner-fill"
+                  style={{
+                    width: `${Math.min(
+                      100,
+                      ((product.flashSale.allocation_quantity - product.flashSale.units_remaining) /
+                        Math.max(product.flashSale.allocation_quantity, 1)) * 100
+                    )}%`,
+                  }}
+                />
+              </div>
+              <div style={{ fontSize: 11.5, color: "var(--terracotta)", fontWeight: 600 }}>
+                {product.flashSale.units_remaining} of {product.flashSale.allocation_quantity} units remaining
+              </div>
+            </div>
+          )}
+
+          {/* Tabbed Details */}
+          <div className="pdp-tabs-container">
+            <div className="pdp-tabs-nav" role="tablist">
+              <button
+                className={`pdp-tab-trigger ${activeTab === "overview" ? "active" : ""}`}
+                onClick={() => setActiveTab("overview")}
+              >
+                Overview
+              </button>
+              <button
+                className={`pdp-tab-trigger ${activeTab === "specs" ? "active" : ""}`}
+                onClick={() => setActiveTab("specs")}
+              >
+                Specifications
+              </button>
+              <button
+                className={`pdp-tab-trigger ${activeTab === "logistics" ? "active" : ""}`}
+                onClick={() => setActiveTab("logistics")}
+              >
+                Logistics &amp; Provenance
+              </button>
+            </div>
+
+            <div className="pdp-tab-content">
+              {activeTab === "overview" && (
+                <div>
+                  <MarkdownView content={product.description || "No description provided."} />
+                </div>
+              )}
+
+              {activeTab === "specs" && (
+                <table className="pdp-spec-table">
+                  <tbody>
+                    <tr>
+                      <td>Stock Keeping Unit</td>
+                      <td>{product.sku}</td>
+                    </tr>
+                    <tr>
+                      <td>Category Classification</td>
+                      <td>{product.categoryPath || product.category || "Standard Catalog"}</td>
+                    </tr>
+                    <tr>
+                      <td>Physical Dimensions</td>
+                      <td>
+                        {product.dimensions
+                          ? `${product.dimensions.length ?? "—"} × ${product.dimensions.width ?? "—"} × ${product.dimensions.height ?? "—"} ${product.dimensions.unit ?? "cm"}`
+                          : "Standard release package"}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>Net Weight</td>
+                      <td>{product.weight ? `${product.weight} kg` : "Standard courier class"}</td>
+                    </tr>
+                    <tr>
+                      <td>Ledger Identifier</td>
+                      <td style={{ fontFamily: "var(--font-mono)", fontSize: 11 }}>{product.id}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              )}
+
+              {activeTab === "logistics" && (
+                <div>
+                  <p style={{ margin: "0 0 8px" }}>
+                    <strong>Direct Logistics Partner:</strong> {product.vendorName || "Global Logistics Hub"}
+                  </p>
+                  <p style={{ margin: "0 0 8px" }}>
+                    <strong>Partner ID:</strong> {product.vendorId || "VN-SYSTEM-HQ"}
+                  </p>
+                  <p style={{ margin: 0, color: "var(--text-muted)" }}>
+                    Every parcel is inspected and dispatched under temperature-monitored courier conditions with traceable transit tracking.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Col 3: Sticky Transaction Card */}
+        <aside className="pdp-sticky-transaction-card" aria-label="Purchase actions">
+          <div className="pdp-price-wrap">
+            {isFlash && product.salePrice !== undefined ? (
+              <>
+                <span className="pdp-current-price">{formatPrice(product.salePrice)}</span>
+                <span className="pdp-original-price">{formatPrice(product.price)}</span>
+                <span className="pdp-save-badge">Save {discountPct}%</span>
+              </>
+            ) : (
+              <span className="pdp-current-price">{formatPrice(product.price)}</span>
+            )}
+          </div>
+
+          {/* Real-time availability indicators */}
+          <div className={`pdp-stock-alert ${remainingStock <= 5 ? "low" : "in-stock"}`}>
+            <span className="pdp-pulse-dot" />
+            <span>
+              {isSoldOut
+                ? "Sold Out in Active Allocation"
+                : remainingStock <= 5
+                ? `Low Stock Alert: Only ${remainingStock} unit${remainingStock > 1 ? "s" : ""} left!`
+                : `In Stock: ${remainingStock} units ready for immediate release`}
+            </span>
+          </div>
+
+          {isFlash && (
+            <div style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>
+              Enforced limit: Maximum {product.flashSale?.per_customer_limit} per customer.
+            </div>
+          )}
+
+          {/* Quantity selector */}
+          {!isSoldOut && (
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <label style={{ fontSize: 13, fontWeight: 600, color: "var(--forest)" }}>Quantity:</label>
+              <select
+                value={quantity}
+                onChange={(e) => setQuantity(Number(e.target.value))}
+                className="admin-field-select"
+                style={{ width: 80, padding: "6px 8px" }}
+              >
+                {Array.from({ length: Math.min(orderCap, 10) }, (_, i) => i + 1).map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Action button */}
+          <button
+            className="pdp-action-btn"
+            disabled={isSoldOut}
+            onClick={handleCommitToCart}
+            id="btn-commit-to-cart"
+          >
+            <span>{isSoldOut ? "Allocation Exhausted" : isAdded ? "Added to Cart" : "Commit to Cart"}</span>
+            <span>&rarr;</span>
+          </button>
+
+          {/* Fulfillment Assurances */}
+          <div className="pdp-assurances-list">
+            <div className="assurance-item">
+              <IconTruck />
+              <span>Dispatched within 24 hours via express route</span>
+            </div>
+            <div className="assurance-item">
+              <IconShield />
+              <span>Row-level inventory lock upon checkout</span>
+            </div>
+            <div className="assurance-item">
+              <IconRotate />
+              <span>30-day verified satisfaction return guarantee</span>
+            </div>
+          </div>
+        </aside>
+      </div>
+
+      {/* Social Proof Engine */}
+      <ProductSentimentEngine
+        productId={product.id}
+        session={session}
+        onRequireAuth={onRequireAuth}
+        onNotify={onNotify}
+      />
+    </div>
+  );
+}
+
+// ─── Administrative Unified Product Form Modal ───────────────────────────────
+
+const PRESET_VENDORS = [
+  { id: "VN-8821", name: "Acro Logistics Corp" },
+  { id: "VN-4092", name: "Nordic Acoustic Labs" },
+  { id: "VN-1104", name: "Heritage Canvas & Leather Co." },
+  { id: "VN-9901", name: "Apex Precision Supply" },
+];
+
+function UnifiedProductModal({
+  isOpen,
+  productToEdit,
+  token,
+  onClose,
+  onSaved,
+}: {
+  isOpen: boolean;
+  productToEdit: Product | null;
+  token: string;
+  onClose: () => void;
+  onSaved: (msg: string) => void;
+}) {
+  const isEdit = !!productToEdit;
+
+  const [name, setName] = useState("");
+  const [sku, setSku] = useState("");
+  const [priceDollars, setPriceDollars] = useState("");
+  const [vendorId, setVendorId] = useState("VN-8821");
+  const [vendorName, setVendorName] = useState("Acro Logistics Corp");
+  const [categoryPath, setCategoryPath] = useState("");
+  const [description, setDescription] = useState("");
+  const [descTab, setDescTab] = useState<"edit" | "preview">("edit");
+  const [mediaGallery, setMediaGallery] = useState<MediaAsset[]>([]);
+  const [stockOnHand, setStockOnHand] = useState("100");
+  const [lengthVal, setLengthVal] = useState("28");
+  const [widthVal, setWidthVal] = useState("18");
+  const [heightVal, setHeightVal] = useState("12");
+  const [unitVal, setUnitVal] = useState("cm");
+  const [weightVal, setWeightVal] = useState("0.85");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (productToEdit) {
+      setName(productToEdit.name);
+      setSku(productToEdit.sku);
+      setPriceDollars(productToEdit.price.toFixed(2));
+      setVendorId(productToEdit.vendorId || "VN-8821");
+      setVendorName(productToEdit.vendorName || "Acro Logistics Corp");
+      setCategoryPath(productToEdit.categoryPath || productToEdit.category || "Gear");
+      setDescription(productToEdit.description || "");
+      setMediaGallery(
+        productToEdit.mediaGallery && productToEdit.mediaGallery.length > 0
+          ? productToEdit.mediaGallery
+          : [{ url: productToEdit.imageUrl || "/products/sneaker.jpg", alt: productToEdit.name, display_order: 0 }]
+      );
+      setStockOnHand(String(productToEdit.totalStock));
+      if (productToEdit.dimensions) {
+        setLengthVal(String(productToEdit.dimensions.length ?? ""));
+        setWidthVal(String(productToEdit.dimensions.width ?? ""));
+        setHeightVal(String(productToEdit.dimensions.height ?? ""));
+        setUnitVal(productToEdit.dimensions.unit ?? "cm");
+      }
+      setWeightVal(productToEdit.weight !== undefined && productToEdit.weight !== null ? String(productToEdit.weight) : "");
+    } else {
+      // Create mode defaults
+      setName("");
+      setSku("");
+      setPriceDollars("99.00");
+      setVendorId("VN-8821");
+      setVendorName("Acro Logistics Corp");
+      setCategoryPath("Apparel > Footwear");
+      setDescription("Premium limited release item. Built with durable materials.");
+      setMediaGallery([
+        { url: "/products/sneaker.jpg", alt: "Primary Product View", display_order: 0 },
+      ]);
+      setStockOnHand("50");
+      setLengthVal("30");
+      setWidthVal("20");
+      setHeightVal("15");
+      setUnitVal("cm");
+      setWeightVal("1.0");
+    }
+    setError("");
+  }, [productToEdit, isOpen]);
+
+  if (!isOpen) return null;
+
+  const handleVendorSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    const found = PRESET_VENDORS.find((v) => v.id === val);
+    if (found) {
+      setVendorId(found.id);
+      setVendorName(found.name);
+    } else {
+      setVendorId(val);
+    }
+  };
+
+  const handleAddMedia = () => {
+    setMediaGallery((prev) => [
+      ...prev,
+      { url: "/products/speaker.jpg", alt: "Additional View", display_order: prev.length },
+    ]);
+  };
+
+  const handleUpdateMedia = (index: number, field: keyof MediaAsset, value: any) => {
+    setMediaGallery((prev) =>
+      prev.map((item, i) => (i === index ? { ...item, [field]: value } : item))
+    );
+  };
+
+  const handleRemoveMedia = (index: number) => {
+    setMediaGallery((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+
+    const priceNum = parseFloat(priceDollars);
+    if (isNaN(priceNum) || priceNum <= 0) {
+      setError("Price must be a positive currency amount (floor limit >= $0.01).");
+      return;
+    }
+    const priceCents = Math.round(priceNum * 100);
+
+    const stockNum = parseInt(stockOnHand, 10);
+    if (isNaN(stockNum) || stockNum < 0) {
+      setError("Warehouse availability metric must be 0 or greater.");
+      return;
+    }
+
+    const payload: any = {
+      name: name.trim(),
+      sku: sku.trim().toUpperCase(),
+      price_cents: priceCents,
+      description: description.trim(),
+      vendor_id: vendorId.trim(),
+      vendor_name: vendorName.trim(),
+      category_path: categoryPath.trim(),
+      dimensions: {
+        length: parseFloat(lengthVal) || null,
+        width: parseFloat(widthVal) || null,
+        height: parseFloat(heightVal) || null,
+        unit: unitVal,
+      },
+      weight: parseFloat(weightVal) || null,
+      media_gallery: mediaGallery,
+    };
+
+    if (isEdit) {
+      payload.on_hand_quantity = stockNum;
+    } else {
+      payload.initial_stock = stockNum;
+    }
+
+    setSubmitting(true);
+    try {
+      const url = isEdit
+        ? `/api/v1/admin/products/${productToEdit.id}`
+        : "/api/v1/admin/products";
+      const method = isEdit ? "PUT" : "POST";
+
+      const res = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        onSaved(isEdit ? `Updated "${name}" in catalog.` : `Added "${name}" to active catalog.`);
+        onClose();
+      } else {
+        const err = await res.json().catch(() => ({ detail: "Operation failed" }));
+        setError(err.detail || "Unable to save product.");
+      }
+    } catch {
+      setError("Network communication error.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="modal-backdrop" onClick={() => !submitting && onClose()}>
+      <div className="dialog product-modal-dialog" onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <div>
+            <span className="admin-eyebrow">{isEdit ? "Catalog Mutation (HTTP PUT)" : "New Catalog Asset (HTTP POST)"}</span>
+            <h2 style={{ margin: 0, fontSize: 22, color: "var(--forest)" }}>
+              {isEdit ? `Edit Catalog Item: ${productToEdit.sku}` : "Add New Catalog Product"}
+            </h2>
+          </div>
+          <button type="button" className="catalog-search-clear" onClick={onClose} style={{ position: "static" }}>
+            &times;
+          </button>
+        </div>
+
+        {error && <div className="dialog-error">{error}</div>}
+
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {/* Row 1: Name & SKU */}
+          <div className="form-grid-2">
+            <label className="admin-field-label">
+              Product Title
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Transit Runner Mk.II"
+                className="admin-field-input"
+                required
+              />
+            </label>
+            <label className="admin-field-label">
+              Global Stock Keeping Unit (SKU)
+              <input
+                type="text"
+                value={sku}
+                onChange={(e) => setSku(e.target.value)}
+                placeholder="e.g. TRANSIT-MK2"
+                className="admin-field-input"
+                required
+              />
+            </label>
+          </div>
+
+          {/* Row 2: Price & Warehouse Stock */}
+          <div className="form-grid-3">
+            <label className="admin-field-label">
+              Retail Price ($ USD)
+              <input
+                type="number"
+                step="0.01"
+                min="0.01"
+                value={priceDollars}
+                onChange={(e) => setPriceDollars(e.target.value)}
+                placeholder="99.00"
+                className="admin-field-input"
+                required
+              />
+              <span style={{ fontSize: 10.5, color: "var(--text-muted)" }}>
+                Casts to {Math.round((parseFloat(priceDollars) || 0) * 100)} cents subunits
+              </span>
+            </label>
+
+            <label className="admin-field-label">
+              {isEdit ? "Stock On Hand (Ledger Delta)" : "Initial Stock Allocation"}
+              <input
+                type="number"
+                min="0"
+                value={stockOnHand}
+                onChange={(e) => setStockOnHand(e.target.value)}
+                placeholder="100"
+                className="admin-field-input"
+                required
+              />
+              <span style={{ fontSize: 10.5, color: "var(--text-muted)" }}>
+                Writes directly to inventory ledger
+              </span>
+            </label>
+
+            <label className="admin-field-label">
+              Logistics Vendor
+              <select
+                value={vendorId}
+                onChange={handleVendorSelect}
+                className="admin-field-select"
+              >
+                {PRESET_VENDORS.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.name} ({v.id})
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          {/* Row 3: Category Path & Logistics Partner Name */}
+          <div className="form-grid-2">
+            <label className="admin-field-label">
+              Hierarchical Classification (`category_path`)
+              <input
+                type="text"
+                value={categoryPath}
+                onChange={(e) => setCategoryPath(e.target.value)}
+                placeholder="e.g. Apparel > Footwear > Running"
+                className="admin-field-input"
+              />
+            </label>
+            <label className="admin-field-label">
+              Partner Distribution Display Name
+              <input
+                type="text"
+                value={vendorName}
+                onChange={(e) => setVendorName(e.target.value)}
+                placeholder="e.g. Acro Logistics Corp"
+                className="admin-field-input"
+              />
+            </label>
+          </div>
+
+          {/* Row 4: Markdown Long-Form Specifications */}
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <label className="admin-field-label">Long-Form Specifications (Markdown Support)</label>
+              <div className="markdown-editor-tabs">
+                <button
+                  type="button"
+                  className={`markdown-tab-btn ${descTab === "edit" ? "active" : ""}`}
+                  onClick={() => setDescTab("edit")}
+                >
+                  Write Markdown
+                </button>
+                <button
+                  type="button"
+                  className={`markdown-tab-btn ${descTab === "preview" ? "active" : ""}`}
+                  onClick={() => setDescTab("preview")}
+                >
+                  Live Preview
+                </button>
+              </div>
+            </div>
+
+            {descTab === "edit" ? (
+              <textarea
+                rows={4}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Use markdown: **bold text**, - list items, ## headers, and detailed specs..."
+                className="admin-field-textarea"
+                style={{ width: "100%", fontFamily: "var(--font-mono)", fontSize: 12.5 }}
+              />
+            ) : (
+              <div className="markdown-preview-box">
+                <MarkdownView content={description} />
+              </div>
+            )}
+          </div>
+
+          {/* Row 5: Dynamic Media Gallery Manager */}
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <label className="admin-field-label">Media Gallery Assets (`media_gallery` JSONB Array)</label>
+              <button
+                type="button"
+                className="table-btn"
+                onClick={handleAddMedia}
+              >
+                + Add Media Item
+              </button>
+            </div>
+
+            <div className="media-manager-card">
+              {mediaGallery.map((asset, idx) => (
+                <div key={idx} className="media-asset-row">
+                  <img src={asset.url} alt={asset.alt || "Asset"} className="media-asset-preview" />
+                  <input
+                    type="text"
+                    value={asset.url}
+                    onChange={(e) => handleUpdateMedia(idx, "url", e.target.value)}
+                    placeholder="Image URL"
+                    className="admin-field-input"
+                    style={{ fontSize: 12 }}
+                  />
+                  <input
+                    type="text"
+                    value={asset.alt}
+                    onChange={(e) => handleUpdateMedia(idx, "alt", e.target.value)}
+                    placeholder="Alt Text"
+                    className="admin-field-input"
+                    style={{ fontSize: 12 }}
+                  />
+                  <input
+                    type="number"
+                    value={asset.display_order}
+                    onChange={(e) => handleUpdateMedia(idx, "display_order", parseInt(e.target.value, 10) || 0)}
+                    placeholder="Order"
+                    className="admin-field-input"
+                    style={{ fontSize: 12 }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveMedia(idx)}
+                    style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", fontWeight: "bold" }}
+                    title="Remove asset"
+                  >
+                    &times;
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Row 6: Dimensions & Weight */}
+          <div>
+            <label className="admin-field-label" style={{ marginBottom: 6 }}>
+              Shipping Package Dimensions &amp; Net Weight
+            </label>
+            <div className="form-grid-3">
+              <div style={{ display: "flex", gap: 6 }}>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={lengthVal}
+                  onChange={(e) => setLengthVal(e.target.value)}
+                  placeholder="Length"
+                  className="admin-field-input"
+                />
+                <input
+                  type="number"
+                  step="0.1"
+                  value={widthVal}
+                  onChange={(e) => setWidthVal(e.target.value)}
+                  placeholder="Width"
+                  className="admin-field-input"
+                />
+                <input
+                  type="number"
+                  step="0.1"
+                  value={heightVal}
+                  onChange={(e) => setHeightVal(e.target.value)}
+                  placeholder="Height"
+                  className="admin-field-input"
+                />
+              </div>
+
+              <select
+                value={unitVal}
+                onChange={(e) => setUnitVal(e.target.value)}
+                className="admin-field-select"
+              >
+                <option value="cm">Unit: Centimeters (cm)</option>
+                <option value="in">Unit: Inches (in)</option>
+                <option value="mm">Unit: Millimeters (mm)</option>
+              </select>
+
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={weightVal}
+                  onChange={(e) => setWeightVal(e.target.value)}
+                  placeholder="Weight (kg)"
+                  className="admin-field-input"
+                />
+                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>kg</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 8 }}>
+            <button
+              type="button"
+              className="admin-btn secondary"
+              onClick={onClose}
+              disabled={submitting}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="admin-btn"
+              style={{ background: "var(--forest)", color: "#fff" }}
+              disabled={submitting}
+            >
+              {submitting ? "Persisting..." : isEdit ? "Update Catalog Item" : "Create Product in Ledger"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ─── Admin Catalog & Inventory Management Tab ────────────────────────────────
+
+function AdminCatalogTab({
+  token,
+  onNotify,
+  onProductsUpdated,
+}: {
+  token: string;
+  onNotify: (msg: string, type?: "success" | "error") => void;
+  onProductsUpdated?: () => void;
+}) {
+  const [items, setItems] = useState<ApiProduct[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [productToEdit, setProductToEdit] = useState<Product | null>(null);
+
+  const loadCatalog = useCallback(() => {
+    setLoading(true);
+    fetch("/api/v1/admin/products", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.statusText)))
+      .then((data: ApiProduct[]) => setItems(data))
+      .catch(() => onNotify("Could not load administrative catalog list.", "error"))
+      .finally(() => setLoading(false));
+  }, [token, onNotify]);
+
+  useEffect(() => {
+    loadCatalog();
+  }, [loadCatalog]);
+
+  const filteredItems = useMemo(() => {
+    if (!search.trim()) return items;
+    const q = search.toLowerCase();
+    return items.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        p.sku.toLowerCase().includes(q) ||
+        (p.vendor_name && p.vendor_name.toLowerCase().includes(q)) ||
+        (p.category_path && p.category_path.toLowerCase().includes(q))
+    );
+  }, [items, search]);
+
+  const handleOpenCreate = () => {
+    setProductToEdit(null);
+    setModalOpen(true);
+  };
+
+  const handleOpenEdit = (p: ApiProduct) => {
+    const mapped: Product = {
+      id: p.id,
+      sku: p.sku,
+      name: p.name,
+      price: p.price_cents / 100,
+      salePrice: p.flash_sale ? p.flash_sale.sale_price_cents / 100 : undefined,
+      badge: "Catalog",
+      color: "sand",
+      imageUrl: p.media_gallery?.[0]?.url || `/products/${p.id}.jpg`,
+      description: p.description || "",
+      rating: 4.8,
+      reviewCount: 100,
+      category: p.category_path || "General",
+      availableQty: p.available_quantity,
+      totalStock: p.on_hand_quantity,
+      vendorId: p.vendor_id,
+      vendorName: p.vendor_name,
+      categoryPath: p.category_path,
+      dimensions: p.dimensions,
+      weight: p.weight,
+      mediaGallery: p.media_gallery,
+      flashSale: p.flash_sale,
+    };
+    setProductToEdit(mapped);
+    setModalOpen(true);
+  };
+
+  const handleSaved = (msg: string) => {
+    onNotify(msg, "success");
+    loadCatalog();
+    if (onProductsUpdated) onProductsUpdated();
+  };
+
+  return (
+    <div className="admin-pane" id="admin-catalog-pane">
+      <div className="admin-catalog-view">
+        <div className="admin-catalog-toolbar">
+          <div>
+            <h2 className="admin-section-title" style={{ margin: 0 }}>
+              Catalog Ledger &amp; Inventory Assets
+            </h2>
+            <p className="admin-section-desc" style={{ margin: "4px 0 0" }}>
+              Full mutation control (HTTP PUT/POST) with direct ledger synchronization.
+            </p>
+          </div>
+          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            <div className="catalog-search-input-wrap" style={{ width: 280 }}>
+              <span className="catalog-search-icon"><IconSearch /></span>
+              <input
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Filter by SKU, name, vendor..."
+                className="catalog-search-input"
+                style={{ padding: "8px 12px 8px 36px" }}
+              />
+            </div>
+            <button
+              className="admin-btn"
+              style={{ background: "var(--forest)", color: "#fff" }}
+              onClick={handleOpenCreate}
+              id="btn-admin-add-product"
+            >
+              + Add New Product
+            </button>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="analytics-loading">Loading catalog ledger data...</div>
+        ) : (
+          <div className="admin-catalog-table-wrap">
+            <table className="admin-catalog-table" id="admin-catalog-table">
+              <thead>
+                <tr>
+                  <th>Product Asset</th>
+                  <th>SKU</th>
+                  <th>Logistics Vendor</th>
+                  <th>Classification</th>
+                  <th style={{ textAlign: "right" }}>Price</th>
+                  <th style={{ textAlign: "right" }}>On Hand</th>
+                  <th style={{ textAlign: "right" }}>Reserved</th>
+                  <th style={{ textAlign: "right" }}>Available</th>
+                  <th style={{ textAlign: "center" }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredItems.map((p) => {
+                  const thumb = p.media_gallery?.[0]?.url || `/products/${p.id}.jpg`;
+                  return (
+                    <tr key={p.id}>
+                      <td>
+                        <div className="table-product-cell">
+                          <img src={thumb} alt={p.name} className="table-product-thumb" />
+                          <div className="table-product-meta">
+                            <strong>{p.name}</strong>
+                            <span>{p.id.slice(0, 8)}...</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td style={{ fontFamily: "var(--font-mono)", fontWeight: 600 }}>{p.sku}</td>
+                      <td>
+                        <span className="table-vendor-pill">
+                          {p.vendor_name || p.vendor_id || "Acro Logistics Corp"}
+                        </span>
+                      </td>
+                      <td style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                        {p.category_path || "General"}
+                      </td>
+                      <td style={{ textAlign: "right", fontFamily: "var(--font-mono)", fontWeight: 600 }}>
+                        {formatCents(p.price_cents)}
+                      </td>
+                      <td style={{ textAlign: "right", fontFamily: "var(--font-mono)" }}>
+                        {p.on_hand_quantity}
+                      </td>
+                      <td style={{ textAlign: "right", fontFamily: "var(--font-mono)", color: "var(--terracotta)" }}>
+                        {p.reserved_quantity ?? Math.max(0, p.on_hand_quantity - p.available_quantity)}
+                      </td>
+                      <td style={{ textAlign: "right", fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--forest)" }}>
+                        {p.available_quantity}
+                      </td>
+                      <td style={{ textAlign: "center" }}>
+                        <button
+                          className="table-btn primary"
+                          onClick={() => handleOpenEdit(p)}
+                          id={`btn-edit-prod-${p.id}`}
+                        >
+                          Edit
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <UnifiedProductModal
+        isOpen={modalOpen}
+        productToEdit={productToEdit}
+        token={token}
+        onClose={() => setModalOpen(false)}
+        onSaved={handleSaved}
+      />
+    </div>
+  );
+}
+
 // ─── Admin Panel (Tabbed, Executive Design) ──────────────────────────────────
 
-type AdminTab = "overview" | "analytics" | "flash-sales";
+type AdminTab = "overview" | "catalog" | "analytics" | "flash-sales";
 
 function AdminPanel({
   token,
   products,
   onNotify,
+  onProductsUpdated,
 }: {
   token: string;
   products: Product[];
   onNotify: (msg: string, type?: "success" | "error") => void;
+  onProductsUpdated?: () => void;
 }) {
   const [activeTab, setActiveTab] = useState<AdminTab>("overview");
   const [summary, setSummary] = useState<{
@@ -1080,6 +2682,7 @@ function AdminPanel({
       }
       onNotify(`Added +25 units to ${ok} product(s).`, "success");
       fetchDashboard();
+      if (onProductsUpdated) onProductsUpdated();
     } catch {
       onNotify("Inventory restock failed.", "error");
     } finally {
@@ -1098,6 +2701,7 @@ function AdminPanel({
         const d = await res.json();
         onNotify(`Reclaimed ${d.released_count} expired hold reservation(s).`, "success");
         fetchDashboard();
+        if (onProductsUpdated) onProductsUpdated();
       } else {
         onNotify("Failed to release expired reservations.", "error");
       }
@@ -1135,6 +2739,15 @@ function AdminPanel({
           id="tab-admin-overview"
         >
           Overview
+        </button>
+        <button
+          role="tab"
+          aria-selected={activeTab === "catalog"}
+          className={`admin-tab-btn ${activeTab === "catalog" ? "active" : ""}`}
+          onClick={() => setActiveTab("catalog")}
+          id="tab-admin-catalog"
+        >
+          Catalog &amp; Inventory
         </button>
         <button
           role="tab"
@@ -1205,6 +2818,14 @@ function AdminPanel({
         </div>
       )}
 
+      {activeTab === "catalog" && (
+        <AdminCatalogTab
+          token={token}
+          onNotify={onNotify}
+          onProductsUpdated={onProductsUpdated}
+        />
+      )}
+
       {activeTab === "analytics" && <AnalyticsTab token={token} />}
 
       {activeTab === "flash-sales" && (
@@ -1240,14 +2861,25 @@ function App() {
   const [catalogSearch, setCatalogSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
 
-  // Dedicated View Mode: "store" or "admin"
-  const [viewMode, setViewMode] = useState<"store" | "admin">(() => {
+  // Dedicated View Mode: "store" | "admin" | "pdp"
+  const [viewMode, setViewMode] = useState<"store" | "admin" | "pdp">(() => {
     if (typeof window !== "undefined") {
       const path = window.location.pathname;
       const hash = window.location.hash;
       if (path === "/admin" || hash === "#admin") return "admin";
+      if (hash.startsWith("#catalog/")) return "pdp";
     }
     return "store";
+  });
+
+  const [pdpSkuOrId, setPdpSkuOrId] = useState<string | null>(() => {
+    if (typeof window !== "undefined") {
+      const hash = window.location.hash;
+      if (hash.startsWith("#catalog/")) {
+        return decodeURIComponent(hash.replace("#catalog/", ""));
+      }
+    }
+    return null;
   });
 
   // Form states
@@ -1343,27 +2975,47 @@ function App() {
   };
 
   // Synchronize hash routing with viewMode
-  const navigateTo = useCallback((mode: "store" | "admin") => {
+  const navigateTo = useCallback((mode: "store" | "admin" | "pdp", targetSku?: string) => {
     setViewMode(mode);
     if (mode === "admin") {
       window.history.pushState(null, "", "#admin");
+      setPdpSkuOrId(null);
+    } else if (mode === "pdp" && targetSku) {
+      setPdpSkuOrId(targetSku);
+      window.history.pushState(null, "", `#catalog/${encodeURIComponent(targetSku)}`);
     } else {
       window.history.pushState(null, "", "#drops");
+      setPdpSkuOrId(null);
     }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
+  const navigateToCatalog = useCallback((skuOrId: string) => {
+    setPdpSkuOrId(skuOrId);
+    setViewMode("pdp");
+    window.history.pushState(null, "", `#catalog/${encodeURIComponent(skuOrId)}`);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
   useEffect(() => {
     const onHashChange = () => {
-      if (window.location.hash === "#admin") {
+      const hash = window.location.hash;
+      if (hash === "#admin") {
         setViewMode("admin");
+        setPdpSkuOrId(null);
+      } else if (hash.startsWith("#catalog/")) {
+        const target = decodeURIComponent(hash.replace("#catalog/", ""));
+        setPdpSkuOrId(target);
+        setViewMode("pdp");
+        window.scrollTo({ top: 0, behavior: "smooth" });
       } else if (
-        window.location.hash === "" ||
-        window.location.hash === "#top" ||
-        window.location.hash === "#drops" ||
-        window.location.hash === "#how"
+        hash === "" ||
+        hash === "#top" ||
+        hash === "#drops" ||
+        hash === "#how"
       ) {
         setViewMode("store");
+        setPdpSkuOrId(null);
       }
     };
     window.addEventListener("hashchange", onHashChange);
@@ -1420,13 +3072,19 @@ function App() {
             salePrice: item.flash_sale ? item.flash_sale.sale_price_cents / 100 : undefined,
             badge: item.flash_sale ? "Flash Deal" : idx === 0 ? "Featured Drop" : "Available Now",
             color: COLORS[idx % COLORS.length],
-            imageUrl: enrich.imageUrl ?? `/products/${item.id}.jpg`,
+            imageUrl: item.media_gallery?.[0]?.url ?? enrich.imageUrl ?? `/products/${item.id}.jpg`,
             description: item.description ?? enrich.description ?? "Limited edition drop.",
-            rating: enrich.rating ?? 4.5,
+            rating: enrich.rating ?? 4.8,
             reviewCount: enrich.reviewCount ?? 50,
-            category: enrich.category ?? "Gear",
+            category: item.category_path?.split(" > ").pop() ?? enrich.category ?? "Gear",
             availableQty: item.available_quantity,
             totalStock: enrich.totalStock ?? item.on_hand_quantity ?? 100,
+            vendorId: item.vendor_id,
+            vendorName: item.vendor_name,
+            categoryPath: item.category_path,
+            dimensions: item.dimensions,
+            weight: item.weight,
+            mediaGallery: item.media_gallery,
             flashSale: item.flash_sale,
           };
         });
@@ -1476,15 +3134,15 @@ function App() {
 
   // ── Cart actions ───────────────────────────────────────────────────────
   const addToBag = useCallback(
-    (product: Product) => {
+    (product: Product, quantity = 1) => {
       setCart((prev) => {
         const existing = prev.find((i) => i.product.id === product.id);
-        if (existing) return prev.map((i) => i.product.id === product.id ? { ...i, quantity: i.quantity + 1 } : i);
-        return [...prev, { product, quantity: 1 }];
+        if (existing) return prev.map((i) => i.product.id === product.id ? { ...i, quantity: i.quantity + quantity } : i);
+        return [...prev, { product, quantity }];
       });
       setRecentlyAddedId(product.id);
       setTimeout(() => setRecentlyAddedId(null), 1500);
-      showToast(`${product.name} added to your bag`, "success", "View Bag", () => setIsCartOpen(true));
+      showToast(`${quantity > 1 ? `${quantity}x ` : ""}${product.name} added to your bag`, "success", "View Bag", () => setIsCartOpen(true));
     },
     [showToast]
   );
@@ -1920,7 +3578,7 @@ function App() {
               )}
             </div>
 
-            {viewMode === "store" && (
+            {(viewMode === "store" || viewMode === "pdp") && (
               <button className="bag" onClick={() => setIsCartOpen(true)} id="btn-toggle-bag">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" />
@@ -1936,9 +3594,28 @@ function App() {
 
       {/* ── Main View Router ────────────────────────────────────────── */}
       <main id="top">
-        {viewMode === "admin" ? (
+        {viewMode === "pdp" && pdpSkuOrId ? (
+          <ProductDetailPage
+            skuOrId={pdpSkuOrId}
+            serverOffsetMs={serverOffsetMs}
+            onAddToBag={(prod, qty) => addToBag(prod, qty)}
+            onNavigateHome={() => navigateTo("store")}
+            session={session}
+            onRequireAuth={() => {
+              setAuthError("");
+              setAuthTab("login");
+              setShowAuthModal(true);
+            }}
+            onNotify={showToast}
+          />
+        ) : viewMode === "admin" ? (
           session?.role === "admin" ? (
-            <AdminPanel token={session.token} products={products} onNotify={showToast} />
+            <AdminPanel
+              token={session.token}
+              products={products}
+              onNotify={showToast}
+              onProductsUpdated={fetchProducts}
+            />
           ) : (
             <div className="admin-auth-guard">
               <div className="guard-card">
@@ -2026,6 +3703,7 @@ function App() {
               products={products}
               serverOffsetMs={serverOffsetMs}
               onAddToBag={addToBag}
+              onOpenProduct={navigateToCatalog}
               recentlyAddedId={recentlyAddedId}
             />
 
@@ -2112,7 +3790,12 @@ function App() {
                       className={`product ${isFlash ? "product--flash" : ""}`}
                       id={`product-card-${product.id}`}
                     >
-                      <div className="product-image-wrap">
+                      <div
+                        className="product-image-wrap"
+                        onClick={() => navigateToCatalog(product.sku)}
+                        style={{ cursor: "pointer" }}
+                        title={`View ${product.name} details & specifications`}
+                      >
                         {product.imageUrl ? (
                           <img src={product.imageUrl} alt={product.name} className="product-img" loading={idx < 3 ? "eager" : "lazy"} />
                         ) : (
@@ -2141,7 +3824,14 @@ function App() {
                               <span className="review-count">({product.reviewCount})</span>
                             </div>
                           )}
-                          <h3 className="product-name">{product.name}</h3>
+                          <h3
+                            className="product-name"
+                            onClick={() => navigateToCatalog(product.sku)}
+                            style={{ cursor: "pointer" }}
+                            title={`View ${product.name} details & specifications`}
+                          >
+                            {product.name}
+                          </h3>
                           {product.description && <p className="product-desc">{product.description}</p>}
                         </div>
 
