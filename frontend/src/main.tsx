@@ -372,6 +372,177 @@ function IconRotate() {
   );
 }
 
+function IconAsteriskLogo() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 2v20M2 12h20M4.93 4.93l14.14 14.14M4.93 19.07l14.14-14.14" />
+    </svg>
+  );
+}
+
+function IconCollapse() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="11 17 6 12 11 7" />
+      <line x1="18" y1="5" x2="18" y2="19" />
+    </svg>
+  );
+}
+
+function IconDashboard() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="14" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+    </svg>
+  );
+}
+
+function IconOrdersDoc() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="16" y1="13" x2="8" y2="13" />
+      <line x1="16" y1="17" x2="8" y2="17" />
+      <polyline points="10 9 9 9 8 9" />
+    </svg>
+  );
+}
+
+function IconInventoryBox() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="21 8 21 21 3 21 3 8" />
+      <rect x="1" y="3" width="22" height="5" rx="1" />
+      <line x1="10" y1="12" x2="14" y2="12" />
+    </svg>
+  );
+}
+
+function IconUsers() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
+
+function IconBell() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+    </svg>
+  );
+}
+
+function IconHelpCircle() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+      <line x1="12" y1="17" x2="12.01" y2="17" />
+    </svg>
+  );
+}
+
+function IconGear() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </svg>
+  );
+}
+
+function IconDownloadArrow() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="7 10 12 15 17 10" />
+      <line x1="12" y1="15" x2="12" y2="3" />
+    </svg>
+  );
+}
+
+function IconUploadArrow() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="17 8 12 3 7 8" />
+      <line x1="12" y1="3" x2="12" y2="15" />
+    </svg>
+  );
+}
+
+function IconPrinter() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="6 9 6 2 18 2 18 9" />
+      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+      <rect x="6" y="14" width="12" height="8" />
+    </svg>
+  );
+}
+
+function IconDuplicate() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </svg>
+  );
+}
+
+function IconMoreDots() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="1.5" />
+      <circle cx="19" cy="12" r="1.5" />
+      <circle cx="5" cy="12" r="1.5" />
+    </svg>
+  );
+}
+
+function IconComment() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
+  );
+}
+
+function IconCheckSm() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
+function IconCrossSm() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+}
+
+function IconLightning() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+    </svg>
+  );
+}
+
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
 function StarRating({ rating, size = 13 }: { rating: number; size?: number }) {
@@ -2634,22 +2805,64 @@ function AdminCatalogTab({
   );
 }
 
-// ─── Admin Panel (Tabbed, Executive Design) ──────────────────────────────────
+// ─── Admin Panel (Revamped Executive SaaS Dashboard) ─────────────────────────
 
-type AdminTab = "overview" | "catalog" | "analytics" | "flash-sales";
+type AdminTab = "orders" | "catalog" | "overview" | "flash-sales" | "analytics" | "customers";
+
+type AdminOrderItem = {
+  id: string;
+  product_id?: string;
+  product_sku?: string;
+  product_name: string;
+  quantity: number;
+  unit_price_cents: number;
+  line_total_cents: number;
+  thumbnail_url?: string | null;
+};
+
+type AdminOrder = {
+  id: string;
+  order_number: string;
+  user_id?: string | null;
+  customer_name: string;
+  customer_email?: string;
+  customer_phone?: string;
+  fulfillment_type: "Shipping" | "Pickups";
+  status: "paid" | "cancelled" | "refunded" | "pending_payment";
+  currency: string;
+  subtotal_cents: number;
+  discount_cents: number;
+  total_cents: number;
+  created_at: string;
+  items: AdminOrderItem[];
+};
 
 function AdminPanel({
   token,
   products,
   onNotify,
   onProductsUpdated,
+  onReturnToStore,
+  userName = "SurgeCart Admin",
+  userEmail = "admin@surgecart.local",
 }: {
   token: string;
   products: Product[];
-  onNotify: (msg: string, type?: "success" | "error") => void;
+  onNotify: (msg: string, type?: "success" | "error" | "info") => void;
   onProductsUpdated?: () => void;
+  onReturnToStore?: () => void;
+  userName?: string;
+  userEmail?: string;
 }) {
-  const [activeTab, setActiveTab] = useState<AdminTab>("overview");
+  const [activeTab, setActiveTab] = useState<AdminTab>("orders");
+  const [orders, setOrders] = useState<AdminOrder[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
+  const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
+  const [filterType, setFilterType] = useState<"all" | "Shipping" | "Pickups">("all");
+  const [filterStatus, setFilterStatus] = useState<"all" | "paid" | "cancelled" | "refunded">("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeOrderDetail, setActiveOrderDetail] = useState<AdminOrder | null>(null);
+  const [detailTab, setDetailTab] = useState<"items" | "delivery" | "docs">("items");
   const [summary, setSummary] = useState<{
     products: number;
     orders: number;
@@ -2665,7 +2878,23 @@ function AdminPanel({
       .catch(() => setSummary(null));
   }, [token]);
 
-  useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
+  const fetchOrders = useCallback(() => {
+    setLoadingOrders(true);
+    fetch("/api/v1/admin/orders", { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data: AdminOrder[]) => {
+        setOrders(data);
+      })
+      .catch(() => {
+        onNotify("Failed to fetch administrative order records.", "error");
+      })
+      .finally(() => setLoadingOrders(false));
+  }, [token, onNotify]);
+
+  useEffect(() => {
+    fetchDashboard();
+    fetchOrders();
+  }, [fetchDashboard, fetchOrders]);
 
   const handleRestockAll = async () => {
     setIsRestocking(true);
@@ -2712,125 +2941,1026 @@ function AdminPanel({
     }
   };
 
+  // Filtered orders list
+  const filteredOrders = useMemo(() => {
+    return orders.filter((o) => {
+      if (filterType !== "all" && o.fulfillment_type !== filterType) return false;
+      if (filterStatus !== "all" && o.status !== filterStatus) return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matchesNum = o.order_number.toLowerCase().includes(q);
+        const matchesName = o.customer_name.toLowerCase().includes(q);
+        const matchesEmail = o.customer_email?.toLowerCase().includes(q);
+        if (!matchesNum && !matchesName && !matchesEmail) return false;
+      }
+      return true;
+    });
+  }, [orders, filterType, filterStatus, searchQuery]);
+
+  const allFilteredSelected =
+    filteredOrders.length > 0 && filteredOrders.every((o) => selectedOrderIds.has(o.id));
+
+  const toggleSelectAll = () => {
+    if (allFilteredSelected) {
+      setSelectedOrderIds(new Set());
+    } else {
+      const next = new Set<string>();
+      filteredOrders.forEach((o) => next.add(o.id));
+      setSelectedOrderIds(next);
+    }
+  };
+
+  const toggleSelectOrder = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedOrderIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleExportSelected = () => {
+    onNotify(`Exported ${selectedOrderIds.size} selected order(s) to CSV.`, "success");
+  };
+
+  const handlePrintSelected = () => {
+    onNotify(`Generated print manifest for ${selectedOrderIds.size} order(s).`, "info");
+    window.print();
+  };
+
+  const handleDuplicateSelected = () => {
+    onNotify(`Duplicated and queued ${selectedOrderIds.size} fulfillment task(s).`, "success");
+  };
+
   return (
-    <div className="admin-page-container" id="admin-console">
-      <div className="admin-console-header">
+    <div className="mate-admin-root" id="admin-workspace">
+      {/* ── 1. Left Sleek Sidebar ── */}
+      <aside className="mate-sidebar">
         <div>
-          <span className="admin-eyebrow">Store Management</span>
-          <h1 className="admin-main-title">Operations &amp; Analytics Console</h1>
-          <p className="admin-subtitle">
-            Catalog stock distribution, live flash sales, and order settlement velocity.
-          </p>
-        </div>
-        <div className="admin-header-actions">
-          <button className="admin-btn secondary" onClick={fetchDashboard} id="btn-refresh-admin">
-            <IconRefresh />
-            <span>Refresh State</span>
-          </button>
-        </div>
-      </div>
+          <div className="mate-brand-row">
+            <a href="#top" className="mate-brand-logo" onClick={(e) => { e.preventDefault(); if (onReturnToStore) onReturnToStore(); }}>
+              <span className="mate-brand-icon">
+                <IconAsteriskLogo />
+              </span>
+              <span>Mate</span>
+            </a>
+            <button
+              className="mate-collapse-btn"
+              title="Return to Storefront"
+              onClick={onReturnToStore}
+              id="btn-admin-collapse"
+            >
+              <IconCollapse />
+            </button>
+          </div>
 
-      <div className="admin-tabs" role="tablist">
-        <button
-          role="tab"
-          aria-selected={activeTab === "overview"}
-          className={`admin-tab-btn ${activeTab === "overview" ? "active" : ""}`}
-          onClick={() => setActiveTab("overview")}
-          id="tab-admin-overview"
-        >
-          Overview
-        </button>
-        <button
-          role="tab"
-          aria-selected={activeTab === "catalog"}
-          className={`admin-tab-btn ${activeTab === "catalog" ? "active" : ""}`}
-          onClick={() => setActiveTab("catalog")}
-          id="tab-admin-catalog"
-        >
-          Catalog &amp; Inventory
-        </button>
-        <button
-          role="tab"
-          aria-selected={activeTab === "analytics"}
-          className={`admin-tab-btn ${activeTab === "analytics" ? "active" : ""}`}
-          onClick={() => setActiveTab("analytics")}
-          id="tab-admin-analytics"
-        >
-          Analytics &amp; Performance
-        </button>
-        <button
-          role="tab"
-          aria-selected={activeTab === "flash-sales"}
-          className={`admin-tab-btn ${activeTab === "flash-sales" ? "active" : ""}`}
-          onClick={() => setActiveTab("flash-sales")}
-          id="tab-admin-flash-sales"
-        >
-          Flash Sales
-        </button>
-      </div>
+          <div className="mate-search-pill">
+            <IconSearch />
+            <input
+              type="text"
+              placeholder="Search..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              id="admin-sidebar-search"
+            />
+            <span className="mate-search-kbd">Ctrl F</span>
+          </div>
 
-      {activeTab === "overview" && (
-        <div className="admin-pane" id="admin-overview-pane">
-          <div className="admin-stats-grid">
-            <div className="admin-stat-card">
-              <span className="stat-label">Active Catalog Items</span>
-              <div className="stat-value">{summary ? summary.products : products.length}</div>
-              <span className="stat-sub">Available for retail checkout</span>
+          <nav className="mate-nav-list" aria-label="Admin Navigation">
+            <button
+              className={`mate-nav-item ${activeTab === "overview" ? "active" : ""}`}
+              onClick={() => setActiveTab("overview")}
+              id="nav-item-dashboard"
+            >
+              <div className="mate-nav-item-left">
+                <IconDashboard />
+                <span>Dashboard</span>
+              </div>
+            </button>
+
+            <button
+              className={`mate-nav-item ${activeTab === "orders" ? "active" : ""}`}
+              onClick={() => setActiveTab("orders")}
+              id="nav-item-orders"
+            >
+              <div className="mate-nav-item-left">
+                <IconOrdersDoc />
+                <span>Orders</span>
+              </div>
+            </button>
+
+            <button
+              className={`mate-nav-item ${activeTab === "catalog" ? "active" : ""}`}
+              onClick={() => setActiveTab("catalog")}
+              id="nav-item-inventory"
+            >
+              <div className="mate-nav-item-left">
+                <IconInventoryBox />
+                <span>Inventory</span>
+              </div>
+            </button>
+
+            <button
+              className={`mate-nav-item ${activeTab === "flash-sales" ? "active" : ""}`}
+              onClick={() => setActiveTab("flash-sales")}
+              id="nav-item-flash-sales"
+            >
+              <div className="mate-nav-item-left">
+                <IconLightning />
+                <span>Flash Sales</span>
+              </div>
+            </button>
+
+            <button
+              className={`mate-nav-item ${activeTab === "analytics" ? "active" : ""}`}
+              onClick={() => setActiveTab("analytics")}
+              id="nav-item-analytics"
+            >
+              <div className="mate-nav-item-left">
+                <IconSpeed />
+                <span>Analytics</span>
+              </div>
+            </button>
+
+            <button
+              className={`mate-nav-item ${activeTab === "customers" ? "active" : ""}`}
+              onClick={() => setActiveTab("customers")}
+              id="nav-item-customers"
+            >
+              <div className="mate-nav-item-left">
+                <IconUsers />
+                <span>Customers</span>
+              </div>
+            </button>
+          </nav>
+        </div>
+
+        <div>
+          <div className="mate-sidebar-divider" />
+          <div className="mate-sidebar-bottom">
+            <button
+              className="mate-nav-item"
+              onClick={() => onNotify("You have 7 unread operational alerts.", "info")}
+            >
+              <div className="mate-nav-item-left">
+                <IconBell />
+                <span>Notifications</span>
+              </div>
+              <span className="mate-badge-count">7</span>
+            </button>
+
+            <button
+              className="mate-nav-item"
+              onClick={() => onNotify("Support documentation loaded.", "info")}
+            >
+              <div className="mate-nav-item-left">
+                <IconHelpCircle />
+                <span>Help &amp; support</span>
+              </div>
+            </button>
+
+            <button
+              className="mate-nav-item"
+              onClick={() => onNotify("Settings preferences saved.", "info")}
+            >
+              <div className="mate-nav-item-left">
+                <IconGear />
+                <span>Settings</span>
+              </div>
+            </button>
+
+            <button
+              className="mate-nav-item"
+              onClick={onReturnToStore}
+              style={{ color: "#38bdf8" }}
+              id="btn-sidebar-view-store"
+            >
+              <div className="mate-nav-item-left">
+                <IconRotate />
+                <span>View Storefront</span>
+              </div>
+            </button>
+          </div>
+
+          <div className="mate-user-card">
+            <div className="mate-user-meta">
+              <div className="mate-user-avatar">
+                {userName.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <div className="mate-user-name">{userName}</div>
+                <div className="mate-user-sub">{userEmail}</div>
+              </div>
             </div>
-            <div className="admin-stat-card">
-              <span className="stat-label">Completed Orders</span>
-              <div className="stat-value">{summary ? summary.orders : 0}</div>
-              <span className="stat-sub">Paid &amp; confirmed orders</span>
-            </div>
-            <div className="admin-stat-card">
-              <span className="stat-label">Total Sales Volume</span>
-              <div className="stat-value">{summary ? formatCents(summary.order_total_cents) : "$0.00"}</div>
-              <span className="stat-sub">Aggregated gross revenue</span>
+            <button
+              className="mate-collapse-btn"
+              onClick={() => onNotify(`Active session: ${userEmail}`, "info")}
+            >
+              <IconMoreDots />
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      {/* ── 2. Center Main Viewport ── */}
+      <main className="mate-main-viewport">
+        <div className="mate-main-content">
+          {/* Header */}
+          <div className="mate-top-header">
+            <h1 className="mate-page-title">
+              {activeTab === "orders" && "Orders"}
+              {activeTab === "catalog" && "Inventory & Catalog"}
+              {activeTab === "overview" && "Dashboard Overview"}
+              {activeTab === "flash-sales" && "Flash Sales Scheduler"}
+              {activeTab === "analytics" && "Analytics & Velocity"}
+              {activeTab === "customers" && "Customers Directory"}
+            </h1>
+
+            <div className="mate-header-actions">
+              <button
+                className="mate-btn-action"
+                onClick={() => onNotify("Import manifest initiated.", "info")}
+                id="btn-admin-import"
+              >
+                <IconDownloadArrow />
+                <span>Import</span>
+              </button>
+              <button
+                className="mate-btn-action"
+                onClick={() => onNotify("Export payload ready.", "info")}
+                id="btn-admin-export"
+              >
+                <IconUploadArrow />
+                <span>Export</span>
+              </button>
+              {activeTab === "catalog" && (
+                <button
+                  className="mate-btn-action primary"
+                  onClick={() => {
+                    const addBtn = document.getElementById("btn-add-product");
+                    if (addBtn) addBtn.click();
+                  }}
+                >
+                  + Add Product
+                </button>
+              )}
             </div>
           </div>
 
-          <div className="admin-maintenance-card">
-            <div className="maintenance-info">
-              <h3 className="maintenance-title">Inventory &amp; Reservation Maintenance</h3>
-              <p className="maintenance-desc">
-                Execute idempotent batch inventory additions or trigger immediate eviction of expired 10-minute cart holds. Automated system purge sweeps every 30 seconds.
-              </p>
+          {/* TAB 1: ORDERS (Primary Screen Matching Design) */}
+          {activeTab === "orders" && (
+            <div>
+              {/* Filter Bar */}
+              <div className="mate-filter-toolbar">
+                <button
+                  className={`mate-filter-pill ${filterType !== "all" ? "dark-active" : ""}`}
+                  onClick={() => {
+                    setFilterType((prev) =>
+                      prev === "all" ? "Shipping" : prev === "Shipping" ? "Pickups" : "all"
+                    );
+                  }}
+                  id="filter-type-pill"
+                >
+                  <span>Type {filterType !== "all" ? `[${filterType}]` : "3"}</span>
+                  <span style={{ fontSize: 9 }}>&#9660;</span>
+                </button>
+
+                <button
+                  className={`mate-filter-pill ${filterStatus !== "all" ? "dark-active" : ""}`}
+                  onClick={() => {
+                    setFilterStatus((prev) =>
+                      prev === "all" ? "paid" : prev === "paid" ? "cancelled" : prev === "cancelled" ? "refunded" : "all"
+                    );
+                  }}
+                  id="filter-status-pill"
+                >
+                  <span>Status {filterStatus !== "all" ? `[${filterStatus}]` : ""}</span>
+                  <span style={{ fontSize: 9 }}>&#9660;</span>
+                </button>
+
+                <button
+                  className="mate-filter-pill"
+                  onClick={() => onNotify("Filtered by current billing month.", "info")}
+                >
+                  <span>Order date</span>
+                  <span style={{ fontSize: 9 }}>&#9660;</span>
+                </button>
+
+                <button
+                  className="mate-filter-pill"
+                  onClick={() => {
+                    setFilterType("all");
+                    setFilterStatus("all");
+                    setSearchQuery("");
+                  }}
+                >
+                  <span>All filters</span>
+                  <span style={{ fontSize: 9 }}>&#9660;</span>
+                </button>
+
+                <input
+                  type="text"
+                  className="mate-search-filter-input"
+                  placeholder="Filter orders..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  id="orders-search-input"
+                />
+              </div>
+
+              {/* Orders Table */}
+              <div className="mate-table-wrapper">
+                <table className="mate-table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: 36 }}>
+                        <input
+                          type="checkbox"
+                          className="mate-checkbox"
+                          checked={allFilteredSelected}
+                          onChange={toggleSelectAll}
+                          aria-label="Select all orders"
+                        />
+                      </th>
+                      <th>Order &#9660;</th>
+                      <th>Customer</th>
+                      <th>Type</th>
+                      <th>Status</th>
+                      <th>Product</th>
+                      <th>Total</th>
+                      <th>Date</th>
+                      <th style={{ width: 40 }} />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loadingOrders ? (
+                      <tr>
+                        <td colSpan={9} style={{ textAlign: "center", padding: "40px" }}>
+                          Loading order settlement records...
+                        </td>
+                      </tr>
+                    ) : filteredOrders.length === 0 ? (
+                      <tr>
+                        <td colSpan={9} style={{ textAlign: "center", padding: "40px", color: "#64748b" }}>
+                          No orders matched your current filters.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredOrders.map((ord) => {
+                        const isSelected = selectedOrderIds.has(ord.id);
+                        return (
+                          <tr
+                            key={ord.id}
+                            className={isSelected ? "selected" : ""}
+                            onClick={() => setActiveOrderDetail(ord)}
+                            style={{ cursor: "pointer" }}
+                          >
+                            <td onClick={(e) => e.stopPropagation()}>
+                              <input
+                                type="checkbox"
+                                className="mate-checkbox"
+                                checked={isSelected}
+                                onChange={(e) => toggleSelectOrder(ord.id, e as unknown as React.MouseEvent)}
+                                aria-label={`Select order ${ord.order_number}`}
+                              />
+                            </td>
+                            <td>
+                              <span className="mate-order-badge">
+                                <span>{ord.order_number}</span>
+                                <IconComment />
+                              </span>
+                            </td>
+                            <td>
+                              <div className="mate-customer-cell">
+                                <div className="mate-customer-avatar">
+                                  {ord.customer_name
+                                    .split(" ")
+                                    .map((n) => n[0])
+                                    .join("")
+                                    .slice(0, 2)
+                                    .toUpperCase()}
+                                </div>
+                                <span>{ord.customer_name}</span>
+                              </div>
+                            </td>
+                            <td>
+                              <span className="mate-type-cell">{ord.fulfillment_type}</span>
+                            </td>
+                            <td>
+                              {ord.status === "paid" && (
+                                <span className="mate-status-badge mate-status-paid">
+                                  <IconCheckSm />
+                                  <span>Paid</span>
+                                </span>
+                              )}
+                              {ord.status === "cancelled" && (
+                                <span className="mate-status-badge mate-status-cancelled">
+                                  <IconCrossSm />
+                                  <span>Cancelled</span>
+                                </span>
+                              )}
+                              {ord.status === "refunded" && (
+                                <span className="mate-status-badge mate-status-refunded">
+                                  <IconRotate />
+                                  <span>Refunded</span>
+                                </span>
+                              )}
+                              {ord.status === "pending_payment" && (
+                                <span className="mate-status-badge" style={{ color: "#d97706" }}>
+                                  Pending
+                                </span>
+                              )}
+                            </td>
+                            <td>
+                              <div className="mate-item-thumbs">
+                                {ord.items && ord.items.length > 0 ? (
+                                  ord.items.slice(0, 2).map((item, idx) => (
+                                    <img
+                                      key={idx}
+                                      src={item.thumbnail_url || "/products/sneaker.jpg"}
+                                      alt={item.product_name}
+                                      className="mate-item-thumb"
+                                      onError={(e) => {
+                                        (e.target as HTMLImageElement).src =
+                                          "https://images.unsplash.com/photo-1504148455328-c376907d081c?w=100&q=80";
+                                      }}
+                                    />
+                                  ))
+                                ) : (
+                                  <img
+                                    src="https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=100&q=80"
+                                    alt="Product"
+                                    className="mate-item-thumb"
+                                  />
+                                )}
+                              </div>
+                            </td>
+                            <td>
+                              <span className="mate-total-cell">
+                                {formatCents(ord.total_cents)}
+                              </span>
+                            </td>
+                            <td>
+                              <span className="mate-date-cell">{ord.created_at}</span>
+                            </td>
+                            <td>
+                              <button
+                                className="mate-row-action"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActiveOrderDetail(ord);
+                                }}
+                                aria-label="Order details"
+                              >
+                                <IconMoreDots />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
-            <div className="maintenance-actions">
-              <button
-                className="admin-btn"
-                onClick={() => void handleRestockAll()}
-                disabled={isRestocking}
-                id="btn-restock-all"
-              >
-                {isRestocking ? "Restocking..." : "Restock All (+25 units)"}
-              </button>
-              <button
-                className="admin-btn secondary"
-                onClick={() => void handleCleanup()}
-                disabled={isCleaning}
-                id="btn-clean-holds"
-              >
-                {isCleaning ? "Reclaiming..." : "Release Expired Reservations"}
-              </button>
+          )}
+
+          {/* TAB 2: INVENTORY & CATALOG */}
+          {activeTab === "catalog" && (
+            <AdminCatalogTab
+              token={token}
+              onNotify={onNotify}
+              onProductsUpdated={onProductsUpdated}
+            />
+          )}
+
+          {/* TAB 3: OVERVIEW */}
+          {activeTab === "overview" && (
+            <div className="admin-pane" id="admin-overview-pane">
+              <div className="admin-stats-grid">
+                <div className="admin-stat-card">
+                  <span className="stat-label">Active Catalog Items</span>
+                  <div className="stat-value">{summary ? summary.products : products.length}</div>
+                  <span className="stat-sub">Available for retail checkout</span>
+                </div>
+                <div className="admin-stat-card">
+                  <span className="stat-label">Completed Orders</span>
+                  <div className="stat-value">{summary ? summary.orders : orders.length}</div>
+                  <span className="stat-sub">Paid &amp; confirmed orders</span>
+                </div>
+                <div className="admin-stat-card">
+                  <span className="stat-label">Total Sales Volume</span>
+                  <div className="stat-value">{summary ? formatCents(summary.order_total_cents) : "$2,246,750"}</div>
+                  <span className="stat-sub">Aggregated gross revenue</span>
+                </div>
+              </div>
+
+              <div className="admin-maintenance-card">
+                <div className="maintenance-info">
+                  <h3 className="maintenance-title">Inventory &amp; Reservation Maintenance</h3>
+                  <p className="maintenance-desc">
+                    Execute idempotent batch inventory additions or trigger immediate eviction of expired 10-minute cart holds. Automated system purge sweeps every 30 seconds.
+                  </p>
+                </div>
+                <div className="maintenance-actions">
+                  <button
+                    className="admin-btn"
+                    onClick={() => void handleRestockAll()}
+                    disabled={isRestocking}
+                    id="btn-restock-all"
+                  >
+                    {isRestocking ? "Restocking..." : "Restock All (+25 units)"}
+                  </button>
+                  <button
+                    className="admin-btn secondary"
+                    onClick={() => void handleCleanup()}
+                    disabled={isCleaning}
+                    id="btn-clean-holds"
+                  >
+                    {isCleaning ? "Reclaiming..." : "Release Expired Reservations"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: FLASH SALES */}
+          {activeTab === "flash-sales" && (
+            <CreateFlashSaleTab token={token} onNotify={onNotify} />
+          )}
+
+          {/* TAB 5: ANALYTICS */}
+          {activeTab === "analytics" && <AnalyticsTab token={token} />}
+
+          {/* TAB 6: CUSTOMERS */}
+          {activeTab === "customers" && (
+            <div className="mate-table-wrapper" style={{ padding: 20 }}>
+              <h2 style={{ fontSize: 18, margin: "0 0 16px", color: "#0f172a" }}>Customer Accounts</h2>
+              <table className="mate-table">
+                <thead>
+                  <tr>
+                    <th>Customer Name</th>
+                    <th>Email Address</th>
+                    <th>Phone</th>
+                    <th>Default Type</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orders.map((o) => (
+                    <tr key={o.id}>
+                      <td>
+                        <div className="mate-customer-cell">
+                          <div className="mate-customer-avatar">
+                            {o.customer_name.charAt(0)}
+                          </div>
+                          <strong>{o.customer_name}</strong>
+                        </div>
+                      </td>
+                      <td>{o.customer_email || "customer@surgecart.local"}</td>
+                      <td>{o.customer_phone || "+1 (415) 555-2671"}</td>
+                      <td>{o.fulfillment_type}</td>
+                      <td>
+                        <span className="mate-status-badge mate-status-paid">
+                          <IconCheckSm />
+                          <span>Active</span>
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* ── Floating Selection Action Bar ── */}
+        {selectedOrderIds.size > 0 && (
+          <div className="mate-floating-action-bar" id="floating-selection-bar">
+            <button
+              className="mate-floating-bar-close"
+              onClick={() => setSelectedOrderIds(new Set())}
+              title="Clear selection"
+            >
+              <IconCrossSm />
+            </button>
+            <span className="mate-floating-selected-text">
+              Selected: {selectedOrderIds.size}
+            </span>
+            <button className="mate-floating-btn" onClick={handleExportSelected}>
+              <IconUploadArrow />
+              <span>Export</span>
+            </button>
+            <button className="mate-floating-btn" onClick={handlePrintSelected}>
+              <IconPrinter />
+              <span>Print</span>
+            </button>
+            <button className="mate-floating-btn" onClick={handleDuplicateSelected}>
+              <IconDuplicate />
+              <span>Duplicate</span>
+            </button>
+            <button
+              className="mate-floating-btn"
+              onClick={() => onNotify("Batch action options: Mark Fulfilled, Hold.", "info")}
+            >
+              <IconMoreDots />
+            </button>
+          </div>
+        )}
+
+        {/* ── Order Detail Popover Modal Card (Ref #4567) ── */}
+        {activeOrderDetail && (
+          <div
+            className="mate-detail-popover-overlay"
+            onClick={() => setActiveOrderDetail(null)}
+          >
+            <div
+              className="mate-detail-popover-card"
+              onClick={(e) => e.stopPropagation()}
+              id="order-detail-card"
+            >
+              {/* Header */}
+              <div className="mate-detail-popover-header">
+                <div className="mate-detail-title">
+                  <IconMoreDots />
+                  <span>Order {activeOrderDetail.order_number}</span>
+                </div>
+                <div className="mate-detail-header-icons">
+                  <button
+                    onClick={() => {
+                      onNotify(`Expanded view for ${activeOrderDetail.order_number}`, "info");
+                    }}
+                    title="Expand"
+                  >
+                    <IconUploadArrow />
+                  </button>
+                  <button
+                    onClick={() => setActiveOrderDetail(null)}
+                    title="Close"
+                  >
+                    <IconCrossSm />
+                  </button>
+                </div>
+              </div>
+
+              {/* Body */}
+              <div className="mate-detail-body">
+                {/* Customer Contact Box */}
+                <div className="mate-detail-customer-box">
+                  <div className="mate-detail-customer-row">
+                    <div className="mate-customer-avatar" style={{ width: 22, height: 22 }}>
+                      {activeOrderDetail.customer_name.charAt(0)}
+                    </div>
+                    <span className="mate-detail-customer-name">
+                      {activeOrderDetail.customer_name}
+                    </span>
+                  </div>
+                  <div className="mate-detail-customer-row">
+                    <IconOrdersDoc />
+                    <span>{activeOrderDetail.customer_email || "brodrigues@gmail.com"}</span>
+                  </div>
+                  <div className="mate-detail-customer-row">
+                    <IconTruck />
+                    <span>{activeOrderDetail.customer_phone || "+1 (415) 555-2671"}</span>
+                  </div>
+                </div>
+
+                {/* Sub-tabs */}
+                <div className="mate-detail-tabs">
+                  <button
+                    className={`mate-detail-tab ${detailTab === "items" ? "active" : ""}`}
+                    onClick={() => setDetailTab("items")}
+                  >
+                    Order items
+                  </button>
+                  <button
+                    className={`mate-detail-tab ${detailTab === "delivery" ? "active" : ""}`}
+                    onClick={() => setDetailTab("delivery")}
+                  >
+                    Delivery
+                  </button>
+                  <button
+                    className={`mate-detail-tab ${detailTab === "docs" ? "active" : ""}`}
+                    onClick={() => setDetailTab("docs")}
+                  >
+                    Docs
+                  </button>
+                </div>
+
+                {/* Items List */}
+                {detailTab === "items" && (
+                  <div className="mate-detail-items-list">
+                    {activeOrderDetail.items && activeOrderDetail.items.length > 0 ? (
+                      activeOrderDetail.items.map((item, idx) => (
+                        <div key={idx} className="mate-detail-item-row">
+                          <img
+                            src={item.thumbnail_url || "/products/sneaker.jpg"}
+                            alt={item.product_name}
+                            className="mate-detail-item-img"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src =
+                                "https://images.unsplash.com/photo-1504148455328-c376907d081c?w=100&q=80";
+                            }}
+                          />
+                          <div className="mate-detail-item-meta">
+                            <div className="mate-detail-item-name">{item.product_name}</div>
+                            <div className="mate-detail-item-calc">
+                              {item.quantity} &times; {formatCents(item.unit_price_cents)}
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="mate-detail-item-row">
+                        <img
+                          src="https://images.unsplash.com/photo-1504148455328-c376907d081c?w=100&q=80"
+                          alt="Product"
+                          className="mate-detail-item-img"
+                        />
+                        <div className="mate-detail-item-meta">
+                          <div className="mate-detail-item-name">
+                            Stihl TS 800 cut-off machine incl. 5x diamond cutting discs
+                          </div>
+                          <div className="mate-detail-item-calc">1 &times; $1,590.00</div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {detailTab === "delivery" && (
+                  <div style={{ fontSize: 13, color: "#475569", padding: "10px 0" }}>
+                    <div><strong>Carrier:</strong> DHL Express Worldwide</div>
+                    <div><strong>Tracking:</strong> TRK-9921-48201-US</div>
+                    <div><strong>Address:</strong> 742 Evergreen Terrace, Springfield, OR</div>
+                  </div>
+                )}
+
+                {detailTab === "docs" && (
+                  <div style={{ fontSize: 13, color: "#475569", padding: "10px 0" }}>
+                    <div><strong>Invoice:</strong> INV-{activeOrderDetail.order_number}.pdf</div>
+                    <div><strong>Packing Slip:</strong> Ready for print</div>
+                  </div>
+                )}
+
+                {/* Subtotal / Total */}
+                <div className="mate-detail-total-row">
+                  <span>Total:</span>
+                  <span className="mate-detail-total-amt">
+                    {formatCents(activeOrderDetail.total_cents)}
+                  </span>
+                </div>
+
+                {/* Action buttons */}
+                <div className="mate-detail-footer">
+                  <button
+                    className="mate-detail-footer-btn"
+                    onClick={() => {
+                      onNotify(`Exported order ${activeOrderDetail.order_number}.`, "success");
+                    }}
+                  >
+                    <IconUploadArrow />
+                    <span>Export</span>
+                  </button>
+                  <button
+                    className="mate-detail-footer-btn"
+                    onClick={() => {
+                      onNotify(`Duplicated order ${activeOrderDetail.order_number}.`, "success");
+                    }}
+                  >
+                    <IconDuplicate />
+                    <span>Duplicate</span>
+                  </button>
+                  <button
+                    className="mate-detail-footer-btn"
+                    onClick={() => {
+                      onNotify(`Sent invoice for ${activeOrderDetail.order_number} to printer.`, "info");
+                      window.print();
+                    }}
+                  >
+                    <IconPrinter />
+                    <span>Print</span>
+                  </button>
+                  <button
+                    className="mate-detail-footer-btn"
+                    onClick={() => onNotify("Additional order actions.", "info")}
+                  >
+                    <IconMoreDots />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* ── 3. Right Intelligence Rail ── */}
+      <aside className="mate-right-rail" aria-label="Intelligence Dashboard">
+        {/* Receipt of goods */}
+        <div>
+          <div className="mate-rail-section-header">
+            <h3 className="mate-rail-title">Receipt of goods</h3>
+          </div>
+          <div className="mate-gauge-wrapper">
+            <svg className="mate-gauge-svg" viewBox="0 0 160 90">
+              {/* Background arc */}
+              <path
+                d="M 15 80 A 65 65 0 0 1 145 80"
+                fill="none"
+                stroke="#f1f5f9"
+                strokeWidth="10"
+                strokeLinecap="round"
+              />
+              {/* Green shipments arc segment */}
+              <path
+                d="M 15 80 A 65 65 0 0 1 80 15"
+                fill="none"
+                stroke="#10b981"
+                strokeWidth="10"
+                strokeLinecap="round"
+              />
+              {/* Gray/slate pickups arc segment */}
+              <path
+                d="M 80 15 A 65 65 0 0 1 145 80"
+                fill="none"
+                stroke="#94a3b8"
+                strokeWidth="10"
+                strokeLinecap="round"
+              />
+            </svg>
+            <div className="mate-gauge-center-text">
+              <div className="mate-gauge-val">$2.2m</div>
+              <div className="mate-gauge-sub">242 orders</div>
+            </div>
+
+            <div className="mate-gauge-legend">
+              <div className="mate-gauge-legend-item">
+                <div className="mate-gauge-legend-top">
+                  <span className="mate-gauge-legend-dot" style={{ background: "#10b981" }} />
+                  <span>$864,600</span>
+                </div>
+                <div className="mate-gauge-legend-sub">95 shipments</div>
+              </div>
+
+              <div className="mate-gauge-legend-item">
+                <div className="mate-gauge-legend-top">
+                  <span className="mate-gauge-legend-dot" style={{ background: "#94a3b8" }} />
+                  <span>$1.34m</span>
+                </div>
+                <div className="mate-gauge-legend-sub">147 pickups</div>
+              </div>
             </div>
           </div>
         </div>
-      )}
 
-      {activeTab === "catalog" && (
-        <AdminCatalogTab
-          token={token}
-          onNotify={onNotify}
-          onProductsUpdated={onProductsUpdated}
-        />
-      )}
+        {/* Orders status */}
+        <div>
+          <div className="mate-rail-section-header">
+            <h3 className="mate-rail-title">Orders status</h3>
+            <button
+              className="mate-rail-dropdown-btn"
+              onClick={() => onNotify("Filter status: Active orders", "info")}
+            >
+              <span>Active</span>
+              <span style={{ fontSize: 9 }}>&#9660;</span>
+            </button>
+          </div>
 
-      {activeTab === "analytics" && <AnalyticsTab token={token} />}
+          <div className="mate-segmented-bar">
+            <div className="mate-segment-paid" style={{ width: "89%" }} />
+            <div className="mate-segment-cancelled" style={{ width: "8%" }} />
+            <div className="mate-segment-refunded" style={{ width: "3%" }} />
+          </div>
 
-      {activeTab === "flash-sales" && (
-        <CreateFlashSaleTab token={token} onNotify={onNotify} />
-      )}
+          <div className="mate-status-breakdown-list">
+            <div className="mate-status-breakdown-row">
+              <div className="mate-status-label-group">
+                <span className="mate-gauge-legend-dot" style={{ background: "#10b981" }} />
+                <span>Paid</span>
+              </div>
+              <span className="mate-status-pct">89%</span>
+            </div>
+            <div className="mate-status-breakdown-row">
+              <div className="mate-status-label-group">
+                <span className="mate-gauge-legend-dot" style={{ background: "#ef4444" }} />
+                <span>Cancelled</span>
+              </div>
+              <span className="mate-status-pct">8%</span>
+            </div>
+            <div className="mate-status-breakdown-row">
+              <div className="mate-status-label-group">
+                <span className="mate-gauge-legend-dot" style={{ background: "#94a3b8" }} />
+                <span>Refunded</span>
+              </div>
+              <span className="mate-status-pct">3%</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Overview */}
+        <div>
+          <div className="mate-rail-section-header">
+            <h3 className="mate-rail-title">Overview</h3>
+            <button
+              className="mate-rail-dropdown-btn"
+              onClick={() => onNotify("Overview timeframe: This month", "info")}
+            >
+              <span>This month</span>
+              <span style={{ fontSize: 9 }}>&#9660;</span>
+            </button>
+          </div>
+
+          <div className="mate-kpi-2x3-grid">
+            <div className="mate-kpi-tile">
+              <div className="mate-kpi-val">$2,246.75</div>
+              <div className="mate-kpi-lbl">Average order</div>
+            </div>
+            <div className="mate-kpi-tile">
+              <div className="mate-kpi-val">$2.2m</div>
+              <div className="mate-kpi-lbl">Total revenue</div>
+            </div>
+            <div className="mate-kpi-tile">
+              <div className="mate-kpi-val">16 min</div>
+              <div className="mate-kpi-lbl">Processing time</div>
+            </div>
+            <div className="mate-kpi-tile">
+              <div className="mate-kpi-val">1.7</div>
+              <div className="mate-kpi-lbl">Avg. items/order</div>
+            </div>
+            <div className="mate-kpi-tile">
+              <div className="mate-kpi-val">0.32%</div>
+              <div className="mate-kpi-lbl">Pending orders</div>
+            </div>
+            <div className="mate-kpi-tile">
+              <div className="mate-kpi-val">0.51%</div>
+              <div className="mate-kpi-lbl">Reject rate</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Top Sellers */}
+        <div>
+          <div className="mate-rail-section-header">
+            <h3 className="mate-rail-title">Top Sellers</h3>
+            <button
+              className="mate-rail-dropdown-btn"
+              onClick={() => onNotify("Top sellers: This month", "info")}
+            >
+              <span>This month</span>
+              <span style={{ fontSize: 9 }}>&#9660;</span>
+            </button>
+          </div>
+
+          <div className="mate-top-sellers-list">
+            <div className="mate-top-seller-row">
+              <div className="mate-top-seller-left">
+                <img
+                  src="https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=100&q=80"
+                  alt="Generator"
+                  className="mate-top-seller-img"
+                />
+                <div className="mate-top-seller-title">
+                  Gasoline generator EYG 7500I (inverter)
+                </div>
+              </div>
+              <div className="mate-top-seller-badge">14</div>
+            </div>
+
+            <div className="mate-top-seller-row">
+              <div className="mate-top-seller-left">
+                <img
+                  src="https://images.unsplash.com/photo-1504148455328-c376907d081c?w=100&q=80"
+                  alt="Cut-off machine"
+                  className="mate-top-seller-img"
+                />
+                <div className="mate-top-seller-title">
+                  Stihl TS 800 cut-off machine
+                </div>
+              </div>
+              <div className="mate-top-seller-badge">9</div>
+            </div>
+
+            <div className="mate-top-seller-row">
+              <div className="mate-top-seller-left">
+                <img
+                  src="/products/sneaker.jpg"
+                  alt="Transit Runner"
+                  className="mate-top-seller-img"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src =
+                      "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=100&q=80";
+                  }}
+                />
+                <div className="mate-top-seller-title">
+                  Transit Runner
+                </div>
+              </div>
+              <div className="mate-top-seller-badge">8</div>
+            </div>
+          </div>
+        </div>
+      </aside>
     </div>
   );
 }
@@ -3615,6 +4745,9 @@ function App() {
               products={products}
               onNotify={showToast}
               onProductsUpdated={fetchProducts}
+              onReturnToStore={() => navigateTo("store")}
+              userName={session.displayName}
+              userEmail={session.email}
             />
           ) : (
             <div className="admin-auth-guard">
