@@ -1,12 +1,8 @@
-from fastapi import APIRouter
-
-from app.modules.carts.router import router as cart_router
-from app.modules.catalog.admin_router import router as admin_router
-from app.modules.catalog.router import router as catalog_router
-from app.modules.orders.router import router as order_router
-from app.modules.sales.router import admin_router as sales_admin_router, router as sales_router
-from app.modules.users.router import router as auth_router
-
+"""
+API v1 Root Router
+==================
+Aggregates all module-level routers under the /api/v1 prefix.
+"""
 from datetime import UTC, datetime
 from typing import Annotated
 
@@ -16,8 +12,16 @@ from sqlalchemy.orm import Session
 from app.core.redis import is_redis_available
 from app.core.security import require_admin
 from app.db.session import get_db
+from app.modules.carts.router import router as cart_router
+from app.modules.catalog.admin_router import router as admin_router
+from app.modules.catalog.analytics_router import router as analytics_router
+from app.modules.catalog.router import router as catalog_router
 from app.modules.inventory.service import release_expired_reservations
+from app.modules.orders.router import router as order_router
+from app.modules.sales.router import admin_router as sales_admin_router
+from app.modules.sales.router import router as sales_router
 from app.modules.users.models import User
+from app.modules.users.router import router as auth_router
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -44,10 +48,12 @@ def cleanup_reservations(
     return {"status": "success", "released_count": released}
 
 
+# ── Module routers ────────────────────────────────────────────────────────
 api_router.include_router(catalog_router)
 api_router.include_router(auth_router)
 api_router.include_router(cart_router)
 api_router.include_router(order_router)
 api_router.include_router(sales_router)
-api_router.include_router(admin_router)
-api_router.include_router(sales_admin_router)
+api_router.include_router(admin_router)       # /admin  (products, dashboard, restock)
+api_router.include_router(sales_admin_router) # /admin/flash-sales
+api_router.include_router(analytics_router)   # /admin/analytics
