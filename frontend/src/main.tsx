@@ -211,21 +211,21 @@ const DEFAULT_SAVED_ADDRESSES: DeliveryAddress[] = [
     id: "addr-home",
     label: "Home",
     fullName: "Sooraj G P",
-    street: "742 Evergreen Terrace",
-    city: "Springfield",
-    state: "OR",
-    postalCode: "97477",
-    country: "United States",
+    street: "Flat 402, Skyline Residency, Indiranagar",
+    city: "Bengaluru",
+    state: "Karnataka",
+    postalCode: "560038",
+    country: "India",
   },
   {
     id: "addr-office",
     label: "Office",
     fullName: "Sooraj G P",
-    street: "100 Tech Park Way, Suite 400",
-    city: "Portland",
-    state: "OR",
-    postalCode: "97201",
-    country: "United States",
+    street: "EcoSpace Business Park, Bellandur Outer Ring Rd",
+    city: "Bengaluru",
+    state: "Karnataka",
+    postalCode: "560103",
+    country: "India",
   },
 ];
 
@@ -238,13 +238,13 @@ const emptyAddressDraft: Omit<DeliveryAddress, "id"> = {
   city: "",
   state: "",
   postalCode: "",
-  country: "United States",
+  country: "India",
 };
 
 // ─── Utility helpers ─────────────────────────────────────────────────────────
 
 const formatPrice = (value: number) =>
-  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
+  new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(value);
 
 const formatCents = (cents: number) => formatPrice(cents / 100);
 
@@ -257,11 +257,14 @@ const fmtCountdown = (secs: number): string => {
 
 // SVG Icons
 
-function IconDollar() {
+function IconRupee() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <line x1="12" y1="1" x2="12" y2="23" />
-      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+      <path d="M6 3h12" />
+      <path d="M6 8h12" />
+      <path d="m6 13 8.5 8" />
+      <path d="M6 13h3" />
+      <path d="M9 13c6.667 0 6.667-10 0-10" />
     </svg>
   );
 }
@@ -863,7 +866,7 @@ function AnalyticsTab({ token }: { token: string }) {
         <div className="kpi-card">
           <div className="kpi-top">
             <span className="kpi-label">Total Revenue</span>
-            <span className="kpi-icon-badge"><IconDollar /></span>
+            <span className="kpi-icon-badge"><IconRupee /></span>
           </div>
           <div className="kpi-value">{formatCents(data.total_revenue_cents)}</div>
           <div className="kpi-sub">{data.total_orders} settled orders</div>
@@ -876,7 +879,7 @@ function AnalyticsTab({ token }: { token: string }) {
           </div>
           <div className="kpi-value">{data.total_orders.toLocaleString()}</div>
           <div className="kpi-sub">
-            Average {data.total_orders > 0 ? formatCents(Math.round(data.total_revenue_cents / data.total_orders)) : "$0.00"} per order
+            Average {data.total_orders > 0 ? formatCents(Math.round(data.total_revenue_cents / data.total_orders)) : "₹0.00"} per order
           </div>
         </div>
 
@@ -1228,7 +1231,7 @@ function CreateFlashSaleTab({
                 {p.selected && (
                   <div className="product-check-fields">
                     <label className="pf-label">
-                      Sale Price ($)
+                      Sale Price (₹)
                       <div className="pf-input-row">
                         <input
                           type="number"
@@ -1939,8 +1942,21 @@ function ProductDetailPage({
 
           <div>
             <h1 className="pdp-title">{product.name}</h1>
-            <div className="pdp-sku-meta" style={{ marginTop: 4 }}>
-              SKU: {product.sku} &bull; Category: {product.categoryPath || product.category || "General"}
+            <div className="pdp-sku-meta" style={{ marginTop: 4, display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
+              <span>SKU: {product.sku} &bull; Category: {product.categoryPath || product.category || "General"}</span>
+              <button
+                type="button"
+                className="copy-sku-btn"
+                onClick={() => {
+                  navigator.clipboard.writeText(product.sku);
+                  onNotify(`Copied SKU "${product.sku}" to clipboard!`, "success");
+                }}
+                title="Copy SKU code"
+                id="btn-copy-sku"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                Copy SKU
+              </button>
             </div>
           </div>
 
@@ -2187,12 +2203,14 @@ function UnifiedProductModal({
   token,
   onClose,
   onSaved,
+  onDelete,
 }: {
   isOpen: boolean;
   productToEdit: Product | null;
   token: string;
   onClose: () => void;
   onSaved: (msg: string) => void;
+  onDelete?: (product: Product) => void;
 }) {
   const isEdit = !!productToEdit;
 
@@ -2294,7 +2312,7 @@ function UnifiedProductModal({
 
     const priceNum = parseFloat(priceDollars);
     if (isNaN(priceNum) || priceNum <= 0) {
-      setError("Price must be a positive currency amount (floor limit >= $0.01).");
+      setError("Price must be a positive currency amount (floor limit >= ₹0.01).");
       return;
     }
     const priceCents = Math.round(priceNum * 100);
@@ -2406,19 +2424,19 @@ function UnifiedProductModal({
           {/* Row 2: Price & Warehouse Stock */}
           <div className="form-grid-3">
             <label className="admin-field-label">
-              Retail Price ($ USD)
+              Retail Price (₹ INR)
               <input
                 type="number"
                 step="0.01"
                 min="0.01"
                 value={priceDollars}
                 onChange={(e) => setPriceDollars(e.target.value)}
-                placeholder="99.00"
+                placeholder="999.00"
                 className="admin-field-input"
                 required
               />
               <span style={{ fontSize: 10.5, color: "var(--text-muted)" }}>
-                Casts to {Math.round((parseFloat(priceDollars) || 0) * 100)} cents subunits
+                Casts to {Math.round((parseFloat(priceDollars) || 0) * 100)} paise subunits
               </span>
             </label>
 
@@ -2628,7 +2646,21 @@ function UnifiedProductModal({
           </div>
 
           {/* Action buttons */}
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 8 }}>
+          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, marginTop: 8 }}>
+            {isEdit && onDelete && (
+              <button
+                type="button"
+                className="admin-btn danger-btn"
+                onClick={() => {
+                  if (productToEdit) onDelete(productToEdit);
+                }}
+                disabled={submitting}
+                id="btn-modal-delete-product"
+                style={{ marginRight: "auto" }}
+              >
+                Delete from Inventory
+              </button>
+            )}
             <button
               type="button"
               className="admin-btn secondary"
@@ -2668,6 +2700,32 @@ function AdminCatalogTab({
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
+  const [productToDelete, setProductToDelete] = useState<{ id: string; name: string; sku: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const confirmDeleteProduct = async (id: string) => {
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/v1/admin/products/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.detail || "Failed to delete product from inventory.");
+      }
+      const data = await res.json();
+      onNotify(data.message || "Product successfully removed from inventory.", "success");
+      setProductToDelete(null);
+      setModalOpen(false);
+      loadCatalog();
+      if (onProductsUpdated) onProductsUpdated();
+    } catch (err: unknown) {
+      onNotify((err as Error).message || "Failed to delete product.", "error");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const loadCatalog = useCallback(() => {
     setLoading(true);
@@ -2824,13 +2882,23 @@ function AdminCatalogTab({
                         {p.available_quantity}
                       </td>
                       <td style={{ textAlign: "center" }}>
-                        <button
-                          className="table-btn primary"
-                          onClick={() => handleOpenEdit(p)}
-                          id={`btn-edit-prod-${p.id}`}
-                        >
-                          Edit
-                        </button>
+                        <div style={{ display: "flex", gap: 6, justifyContent: "center" }}>
+                          <button
+                            className="table-btn primary"
+                            onClick={() => handleOpenEdit(p)}
+                            id={`btn-edit-prod-${p.id}`}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            className="table-btn danger"
+                            onClick={() => setProductToDelete({ id: p.id, name: p.name, sku: p.sku })}
+                            id={`btn-delete-prod-${p.id}`}
+                            title={`Delete ${p.name} from inventory`}
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -2847,7 +2915,57 @@ function AdminCatalogTab({
         token={token}
         onClose={() => setModalOpen(false)}
         onSaved={handleSaved}
+        onDelete={(p) => {
+          setModalOpen(false);
+          setProductToDelete({ id: p.id, name: p.name, sku: p.sku });
+        }}
       />
+
+      {/* Delete Product Confirmation Dialog */}
+      {productToDelete && (
+        <div className="dialog-backdrop" onClick={() => !isDeleting && setProductToDelete(null)} id="delete-product-backdrop">
+          <div className="dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 460 }}>
+            <div className="dialog-header">
+              <h3>Delete Product from Inventory</h3>
+              <button
+                type="button"
+                className="dialog-close"
+                onClick={() => !isDeleting && setProductToDelete(null)}
+                disabled={isDeleting}
+              >
+                &times;
+              </button>
+            </div>
+            <div style={{ padding: "16px 20px" }}>
+              <p style={{ margin: "0 0 12px", fontSize: 14, color: "var(--text)" }}>
+                Are you sure you want to delete <strong>{productToDelete.name}</strong> (SKU: <code>{productToDelete.sku}</code>) from inventory?
+              </p>
+              <p style={{ margin: 0, fontSize: 12.5, color: "var(--text-muted)", lineHeight: 1.5 }}>
+                This action will delete the item and its warehouse allocations from the inventory ledger.
+              </p>
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, padding: "12px 20px 18px" }}>
+              <button
+                type="button"
+                className="admin-btn secondary"
+                onClick={() => setProductToDelete(null)}
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="admin-btn danger-btn"
+                onClick={() => confirmDeleteProduct(productToDelete.id)}
+                disabled={isDeleting}
+                id="btn-confirm-delete-product"
+              >
+                {isDeleting ? "Deleting..." : "Delete Product"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -3560,7 +3678,7 @@ function AdminPanel({
                 </div>
                 <div className="admin-stat-card">
                   <span className="stat-label">Total Sales Volume</span>
-                  <div className="stat-value">{summary ? formatCents(summary.order_total_cents) : "$2,246,750"}</div>
+                  <div className="stat-value">{summary ? formatCents(summary.order_total_cents) : "₹2,246,750"}</div>
                   <span className="stat-sub">Aggregated gross revenue</span>
                 </div>
               </div>
@@ -3829,7 +3947,7 @@ function AdminPanel({
                           <div className="mate-detail-item-name">
                             Stihl TS 800 cut-off machine incl. 5x diamond cutting discs
                           </div>
-                          <div className="mate-detail-item-calc">1 &times; $1,590.00</div>
+                          <div className="mate-detail-item-calc">1 &times; ₹1,590.00</div>
                         </div>
                       </div>
                     )}
@@ -3839,8 +3957,8 @@ function AdminPanel({
                 {detailTab === "delivery" && (
                   <div style={{ fontSize: 13, color: "#475569", padding: "10px 0" }}>
                     <div><strong>Carrier:</strong> DHL Express Worldwide</div>
-                    <div><strong>Tracking:</strong> TRK-9921-48201-US</div>
-                    <div><strong>Address:</strong> 742 Evergreen Terrace, Springfield, OR</div>
+                    <div><strong>Tracking:</strong> TRK-9921-48201-IN</div>
+                    <div><strong>Address:</strong> Flat 402, Skyline Residency, Indiranagar, Bengaluru, KA</div>
                   </div>
                 )}
 
@@ -4069,13 +4187,13 @@ function AdminPanel({
           <div className="mate-kpi-2x3-grid">
             <div className="mate-kpi-tile">
               <div className="mate-kpi-val">
-                {summary ? formatCents(summary.avg_order_cents) : "$163.02"}
+                {summary ? formatCents(summary.avg_order_cents) : "₹163.02"}
               </div>
               <div className="mate-kpi-lbl">Average order</div>
             </div>
             <div className="mate-kpi-tile">
               <div className="mate-kpi-val">
-                {summary ? formatCents(summary.order_total_cents) : "$2,282.40"}
+                {summary ? formatCents(summary.order_total_cents) : "₹2,282.40"}
               </div>
               <div className="mate-kpi-lbl">Total revenue</div>
             </div>
@@ -4205,6 +4323,7 @@ function App() {
   const [recentlyAddedId, setRecentlyAddedId] = useState<string | null>(null);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [showBackToTop, setShowBackToTop] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   // Virtual waiting room state
@@ -4355,12 +4474,31 @@ function App() {
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
 
-  // ── Scroll header ──────────────────────────────────────────────────────
+  // ── Scroll header & back-to-top tracking ──────────────────────────────
   useEffect(() => {
-    const onScroll = () => setIsScrolled(window.scrollY > 20);
+    const onScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+      setShowBackToTop(window.scrollY > 400);
+    };
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  // ── Keyboard accessibility (Escape key to dismiss overlays) ────────────
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (isCartOpen) setIsCartOpen(false);
+        if (waitlistModalProduct) setWaitlistModalProduct(null);
+        if (showAuthModal) setShowAuthModal(false);
+        if (showUserDropdown) setShowUserDropdown(false);
+        if (showUserAddressDropdown) setShowUserAddressDropdown(false);
+        if (isDrawerAddressSelectorOpen) setIsDrawerAddressSelectorOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isCartOpen, waitlistModalProduct, showAuthModal, showUserDropdown, showUserAddressDropdown, isDrawerAddressSelectorOpen]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -5163,7 +5301,7 @@ function App() {
                 <div className="trust-row">
                   <span className="trust-item">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
-                    Free shipping over $75
+                    Free shipping over ₹500
                   </span>
                   <span className="trust-item">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
@@ -5547,6 +5685,12 @@ function App() {
                 </div>
 
                 <div className="drawer-footer">
+                  {totalPrice > cartSalePrice && (
+                    <div className="cart-savings-pill" id="cart-flash-savings-pill">
+                      <span>⚡ Flash Sale Savings:</span>
+                      <strong>You save {formatPrice(totalPrice - cartSalePrice)}!</strong>
+                    </div>
+                  )}
                   {/* Stock lock alert */}
                   <div className="drawer-hold-card" id="drawer-hold-card">
                     <div className="drawer-hold-badge">
@@ -5892,9 +6036,31 @@ function App() {
                 {toast.actionLabel}
               </button>
             )}
+            <button
+              type="button"
+              className="toast-close-btn"
+              onClick={() => setToasts((p) => p.filter((t) => t.id !== toast.id))}
+              aria-label="Dismiss notification"
+              title="Dismiss"
+            >
+              &times;
+            </button>
           </div>
         ))}
       </div>
+
+      {/* ── Floating Back to Top Button ── */}
+      {showBackToTop && (
+        <button
+          className="back-to-top-btn"
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          aria-label="Scroll back to top"
+          id="btn-back-to-top"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="18 15 12 9 6 15" /></svg>
+          <span>Top</span>
+        </button>
+      )}
     </>
   );
 }

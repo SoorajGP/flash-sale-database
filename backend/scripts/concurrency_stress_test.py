@@ -50,7 +50,7 @@ def setup_test_product(total_stock: int, prime_redis: bool = True) -> tuple[str,
             name=f"Executive Drop [{test_sku}]",
             description="High-concurrency investor pitch testing asset",
             price_cents=24900,
-            currency="USD",
+            currency="INR",
             is_active=True,
         )
         db.add(product)

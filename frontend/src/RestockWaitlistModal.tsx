@@ -84,7 +84,16 @@ export function RestockWaitlistModal({
         aria-modal="true"
         aria-labelledby="waitlist-title"
       >
-        <div className="waiting-room-header">
+        <div className="waiting-room-header" style={{ position: "relative" }}>
+          <button
+            type="button"
+            className="dialog-close"
+            onClick={handleClose}
+            aria-label="Close dialog"
+            style={{ position: "absolute", top: 12, right: 12, background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-muted)" }}
+          >
+            &times;
+          </button>
           <div className="wr-badge">Automated Restock Alerts</div>
           <h2 id="waitlist-title" className="wr-heading">
             Join Restock Waitlist
@@ -104,7 +113,9 @@ export function RestockWaitlistModal({
             <h4 className="waitlist-name">{product.name}</h4>
             <div className="waitlist-sku">SKU: {product.sku}</div>
             <div className="waitlist-price">
-              {product.salePrice ? `$${product.salePrice.toFixed(2)} (Flash Sale)` : `$${product.price.toFixed(2)}`}
+              {product.salePrice
+                ? `₹${product.salePrice.toLocaleString("en-IN", { minimumFractionDigits: 2 })} (Flash Sale)`
+                : `₹${product.price.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`}
             </div>
           </div>
         </div>

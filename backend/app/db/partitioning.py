@@ -110,7 +110,7 @@ def ensure_date_partitions(engine: Engine, months_back: int = 2, months_forward:
                             cart_id UUID REFERENCES carts(id) ON DELETE SET NULL,
                             user_id UUID REFERENCES users(id) ON DELETE SET NULL,
                             status order_status NOT NULL DEFAULT 'pending_payment',
-                            currency VARCHAR(3) NOT NULL DEFAULT 'USD',
+                            currency VARCHAR(3) NOT NULL DEFAULT 'INR',
                             subtotal_cents INTEGER NOT NULL,
                             discount_cents INTEGER NOT NULL DEFAULT 0,
                             total_cents INTEGER NOT NULL,

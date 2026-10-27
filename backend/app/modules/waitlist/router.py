@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.orm import Session
 
-from app.core.security import get_current_user
+from app.core.security import get_optional_current_user
 from app.db.session import get_db, get_read_db
 from app.modules.users.models import User
 from app.modules.waitlist.service import (
@@ -35,7 +35,7 @@ class ClaimStockRequest(BaseModel):
 def join_product_waitlist(
     payload: JoinWaitlistRequest,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User | None, Depends(get_current_user)] = None,
+    current_user: Annotated[User | None, Depends(get_optional_current_user)] = None,
 ) -> dict[str, Any]:
     """Allows rejected shoppers to enter the restock waitlist for sold-out items."""
     try:
@@ -56,7 +56,7 @@ def join_product_waitlist(
 def get_my_restock_alerts(
     db: Annotated[Session, Depends(get_read_db)],
     email: str | None = Query(default=None),
-    current_user: Annotated[User | None, Depends(get_current_user)] = None,
+    current_user: Annotated[User | None, Depends(get_optional_current_user)] = None,
 ) -> list[dict[str, Any]]:
     """Returns all active 10-minute restock alerts for the customer."""
     user_id = current_user.id if current_user else None

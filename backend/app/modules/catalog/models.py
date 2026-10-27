@@ -22,7 +22,7 @@ class Product(Base):
     name: Mapped[str] = mapped_column(String(255))
     description: Mapped[str | None] = mapped_column(Text(), nullable=True)
     price_cents: Mapped[int] = mapped_column(Integer)
-    currency: Mapped[str] = mapped_column(String(3), default="USD")
+    currency: Mapped[str] = mapped_column(String(3), default="INR")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     # Extended catalog & partner metadata

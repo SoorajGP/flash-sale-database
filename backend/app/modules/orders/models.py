@@ -41,7 +41,7 @@ class Order(Base):
         Enum(OrderStatus, values_callable=lambda x: [e.value for e in x], name="order_status"),
         default=OrderStatus.PENDING_PAYMENT,
     )
-    currency: Mapped[str] = mapped_column(String(3), default="USD")
+    currency: Mapped[str] = mapped_column(String(3), default="INR")
     subtotal_cents: Mapped[int] = mapped_column(Integer)
     discount_cents: Mapped[int] = mapped_column(Integer, default=0)
     total_cents: Mapped[int] = mapped_column(Integer)

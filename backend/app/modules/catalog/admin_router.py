@@ -6,7 +6,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import func, select, delete
 from sqlalchemy.orm import Session
 
 from app.core.security import require_admin
@@ -30,7 +30,7 @@ class ProductCreate(BaseModel):
     name: str = Field(min_length=2, max_length=255)
     description: str | None = None
     price_cents: int = Field(ge=0)
-    currency: str = Field(default="USD", min_length=3, max_length=3)
+    currency: str = Field(default="INR", min_length=3, max_length=3)
     opening_stock: int | None = Field(default=0, ge=0)
     initial_stock: int | None = Field(default=None, ge=0)
     vendor_id: str | None = None
@@ -46,7 +46,7 @@ class ProductUpdate(BaseModel):
     sku: str | None = None
     description: str | None = None
     price_cents: int = Field(ge=0)
-    currency: str = Field(default="USD", min_length=3, max_length=3)
+    currency: str = Field(default="INR", min_length=3, max_length=3)
     vendor_id: str | None = None
     vendor_name: str | None = None
     category_path: str | None = None
@@ -240,8 +240,12 @@ def list_admin_customers(
 def list_admin_products(
     _: Annotated[User, Depends(require_admin)],
     db: Annotated[Session, Depends(get_db)],
+    include_inactive: bool = False,
 ) -> list[dict[str, Any]]:
-    products = list(db.scalars(select(Product).order_by(Product.name)))
+    query = select(Product).order_by(Product.name)
+    if not include_inactive:
+        query = query.where(Product.is_active.is_(True))
+    products = list(db.scalars(query))
     if not products:
         return []
     pids = [p.id for p in products]
@@ -429,3 +433,66 @@ def restock(
     )
     db.commit()
     return {"product_id": str(product_id), "on_hand_quantity": inventory.on_hand_quantity, "idempotent": False}
+
+
+@router.delete("/products/{product_id}")
+def delete_product(
+    product_id: UUID,
+    _: Annotated[User, Depends(require_admin)],
+    db: Annotated[Session, Depends(get_db)],
+    force: bool = False,
+) -> dict[str, Any]:
+    """Delete a product from inventory and catalog ledger."""
+    product = db.get(Product, product_id)
+    if product is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    product_name = product.name
+    sku = product.sku
+
+    # Check if there are committed orders referencing this product
+    has_orders = (
+        db.scalar(select(func.count(OrderItem.id)).where(OrderItem.product_id == product_id)) or 0
+    )
+
+    if has_orders > 0 and not force:
+        # Soft delete: deactivate and zero out inventory to prevent any further purchase
+        product.is_active = False
+        inv = db.scalar(select(Inventory).where(Inventory.product_id == product_id).with_for_update())
+        if inv:
+            inv.on_hand_quantity = 0
+            inv.reserved_quantity = 0
+        db.commit()
+        return {
+            "success": True,
+            "product_id": str(product_id),
+            "message": f"Product '{product_name}' ({sku}) has {has_orders} order record(s). It was deactivated and removed from active inventory.",
+            "mode": "archived",
+        }
+
+    from app.modules.carts.models import CartItem
+    from app.modules.inventory.models import InventoryReservation, InventoryMovement
+    from app.modules.sales.models import FlashSaleProduct
+    from app.modules.waitlist.models import FlashSaleWaitlist
+    from app.modules.catalog.models import ProductFeedback
+
+    if has_orders > 0 and force:
+        db.execute(delete(OrderItem).where(OrderItem.product_id == product_id))
+
+    # Clean up dependent relations with RESTRICT foreign keys
+    db.execute(delete(CartItem).where(CartItem.product_id == product_id))
+    db.execute(delete(InventoryReservation).where(InventoryReservation.product_id == product_id))
+    db.execute(delete(FlashSaleProduct).where(FlashSaleProduct.product_id == product_id))
+    db.execute(delete(InventoryMovement).where(InventoryMovement.product_id == product_id))
+    db.execute(delete(FlashSaleWaitlist).where(FlashSaleWaitlist.product_id == product_id))
+    db.execute(delete(ProductFeedback).where(ProductFeedback.product_id == product_id))
+    db.execute(delete(Inventory).where(Inventory.product_id == product_id))
+    db.delete(product)
+    db.commit()
+
+    return {
+        "success": True,
+        "product_id": str(product_id),
+        "message": f"Product '{product_name}' ({sku}) has been permanently deleted from inventory.",
+        "mode": "deleted",
+    }

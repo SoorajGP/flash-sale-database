@@ -228,7 +228,7 @@ def checkout(
         subtotal_cents=subtotal,
         discount_cents=discount,
         total_cents=actual_total,
-        currency="USD",
+        currency="INR",
         status=OrderStatus.PENDING_PAYMENT,
     )
     db.add(order)

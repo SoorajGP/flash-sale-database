@@ -197,6 +197,9 @@ def get_user_restock_alerts(
     rows = db.execute(q).all()
     results: list[dict[str, Any]] = []
     for waitlist_item, prod in rows:
+        exp = waitlist_item.claim_expires_at
+        if exp and exp.tzinfo is None:
+            exp = exp.replace(tzinfo=UTC)
         results.append(
             {
                 "waitlist_id": str(waitlist_item.id),
@@ -206,7 +209,7 @@ def get_user_restock_alerts(
                 "price_cents": prod.price_cents,
                 "claim_token": waitlist_item.claim_token,
                 "claim_expires_at": waitlist_item.claim_expires_at.isoformat() if waitlist_item.claim_expires_at else None,
-                "remaining_seconds": max(0, int((waitlist_item.claim_expires_at - now).total_seconds())) if waitlist_item.claim_expires_at else 0,
+                "remaining_seconds": max(0, int((exp - now).total_seconds())) if exp else 0,
             }
         )
     return results
@@ -226,7 +229,10 @@ def claim_waitlist_stock(db: Session, claim_token: str) -> dict[str, Any]:
     if not entry:
         raise ValueError("Invalid or non-existent claim token")
 
-    if entry.claim_expires_at and entry.claim_expires_at < now:
+    entry_exp = entry.claim_expires_at
+    if entry_exp and entry_exp.tzinfo is None:
+        entry_exp = entry_exp.replace(tzinfo=UTC)
+    if entry_exp and entry_exp < now:
         entry.status = WaitlistStatus.EXPIRED
         db.commit()
         raise ValueError("The 10-minute restock claim window has expired")

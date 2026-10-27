@@ -17,6 +17,7 @@ from app.modules.users.models import User, UserRole
 
 password_hash = PasswordHash.recommended()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
 
 
 def hash_password(password: str) -> str:
@@ -50,6 +51,24 @@ def get_current_user(
     if user is None or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authentication credentials")
     return user
+
+
+def get_optional_current_user(
+    token: Annotated[str | None, Depends(oauth2_scheme_optional)],
+    db: Annotated[Session, Depends(get_db)],
+) -> User | None:
+    if not token:
+        return None
+    settings = get_settings()
+    try:
+        subject = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm]).get("sub")
+        user_id = UUID(subject) if subject else None
+    except (InvalidTokenError, ValueError):
+        user_id = None
+    if not user_id:
+        return None
+    user = db.get(User, user_id)
+    return user if user and user.is_active else None
 
 
 def require_admin(current_user: Annotated[User, Depends(get_current_user)]) -> User:

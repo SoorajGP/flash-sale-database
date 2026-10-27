@@ -65,7 +65,7 @@ def test_system_time(client: TestClient) -> None:
 
 def test_release_expired_reservations(test_db: Session) -> None:
     now = datetime.now(UTC)
-    product = Product(sku="PROD-TEST-1", name="Test Product", price_cents=5000, currency="USD")
+    product = Product(sku="PROD-TEST-1", name="Test Product", price_cents=5000, currency="INR")
     test_db.add(product)
     test_db.flush()
 
@@ -106,13 +106,13 @@ def test_release_expired_reservations(test_db: Session) -> None:
 def test_checkout_applies_flash_sale_pricing(test_db: Session, client: TestClient) -> None:
     now = datetime.now(UTC)
     # 1. Create product and inventory
-    product = Product(sku="PROD-FS-1", name="Flash Sale Sneaker", price_cents=10000, currency="USD")
+    product = Product(sku="PROD-FS-1", name="Flash Sale Sneaker", price_cents=10000, currency="INR")
     test_db.add(product)
     test_db.flush()
     inventory = Inventory(product_id=product.id, on_hand_quantity=50, reserved_quantity=0)
     test_db.add(inventory)
 
-    # 2. Create active flash sale with discount ($60 instead of $100)
+    # 2. Create active flash sale with discount (₹60 instead of ₹100)
     sale = FlashSale(
         name="Midnight Drop",
         status=FlashSaleStatus.LIVE,
@@ -144,7 +144,7 @@ def test_checkout_applies_flash_sale_pricing(test_db: Session, client: TestClien
     assert response.status_code == 201
     order_data = response.json()
 
-    # Total should reflect flash sale price of $60 (6000 cents), not regular price $100
+    # Total should reflect flash sale price of ₹60 (6000 cents), not regular price ₹100
     assert order_data["total_cents"] == 6000
     assert order_data["discount_cents"] == 4000
     assert order_data["status"] == OrderStatus.PENDING_PAYMENT.value
@@ -158,7 +158,7 @@ def test_checkout_applies_flash_sale_pricing(test_db: Session, client: TestClien
 def test_per_customer_limit_enforced(test_db: Session, client: TestClient) -> None:
     now = datetime.now(UTC)
     user = User(email="buyer@example.com", password_hash="hash", display_name="Buyer")
-    product = Product(sku="PROD-LIMIT-1", name="Limited Drop Item", price_cents=8000, currency="USD")
+    product = Product(sku="PROD-LIMIT-1", name="Limited Drop Item", price_cents=8000, currency="INR")
     test_db.add_all([user, product])
     test_db.flush()
 
